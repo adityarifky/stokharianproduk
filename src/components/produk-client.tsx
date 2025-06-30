@@ -162,7 +162,6 @@ export function ProdukClient() {
   
   const onAddSubmit = async (values: z.infer<typeof addProductSchema>) => {
     setIsLoading(true);
-    let success = false;
     try {
       let imageUrl = "https://placehold.co/600x400.png";
       const newProductRef = doc(collection(db, "products"));
@@ -174,7 +173,8 @@ export function ProdukClient() {
       }
 
       await setDoc(newProductRef, {
-        ...values,
+        name: values.name,
+        category: values.category,
         stock: 0,
         image: imageUrl,
       });
@@ -183,7 +183,7 @@ export function ProdukClient() {
         title: "Sukses!",
         description: `Produk "${values.name}" berhasil ditambahkan.`,
       });
-      success = true;
+      setIsAddDialogOpen(false);
     } catch (error) {
       console.error("Error adding product: ", error);
       toast({
@@ -191,19 +191,14 @@ export function ProdukClient() {
         title: "Gagal Menambahkan Produk",
         description: "Terjadi kesalahan saat menyimpan ke database.",
       });
-      success = false;
     } finally {
       setIsLoading(false);
-      if (success) {
-        setIsAddDialogOpen(false);
-      }
     }
   };
 
   const onEditSubmit = async (values: z.infer<typeof editProductSchema>) => {
     if (!productToEdit) return;
     setIsLoading(true);
-    let success = false;
     try {
       const productRef = doc(db, "products", productToEdit.id);
       const updates: { name: string; image?: string } = { name: values.name };
@@ -232,7 +227,7 @@ export function ProdukClient() {
         title: "Sukses!",
         description: `Produk "${values.name}" berhasil diupdate.`,
       });
-      success = true;
+      setIsEditDialogOpen(false);
     } catch (error) {
       console.error("Error updating product: ", error);
       toast({
@@ -242,9 +237,6 @@ export function ProdukClient() {
       });
     } finally {
       setIsLoading(false);
-      if (success) {
-        setIsEditDialogOpen(false);
-      }
     }
   };
 
@@ -315,8 +307,23 @@ export function ProdukClient() {
 
   const handleDeleteProduct = async () => {
     if (!productToDelete) return;
+
+    const product = products.find(p => p.id === productToDelete);
+
     try {
       await deleteDoc(doc(db, "products", productToDelete));
+
+      if (product?.image && !product.image.includes('placehold.co')) {
+          try {
+              const imageFileRef = ref(storage, product.image);
+              await deleteObject(imageFileRef);
+          } catch (storageError: any) {
+              if (storageError.code !== 'storage/object-not-found') {
+                  console.error("Could not delete product image from storage:", storageError);
+              }
+          }
+      }
+      
       toast({
         title: "Sukses!",
         description: "Produk telah berhasil dihapus."
@@ -428,6 +435,7 @@ export function ProdukClient() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[60px]">Gambar</TableHead>
                   <TableHead>Nama Produk</TableHead>
                   <TableHead>Kategori</TableHead>
                   <TableHead className="text-right">Stok</TableHead>
@@ -437,6 +445,16 @@ export function ProdukClient() {
               <TableBody>
                 {products.map((product) => (
                   <TableRow key={product.id}>
+                    <TableCell>
+                      <Image
+                        src={product.image}
+                        alt={product.name}
+                        width={40}
+                        height={40}
+                        className="rounded-md object-cover aspect-square"
+                        data-ai-hint="product food"
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">{product.name}</TableCell>
                     <TableCell>{product.category}</TableCell>
                     <TableCell className="text-right">{product.stock}</TableCell>
@@ -698,3 +716,5 @@ export function ProdukClient() {
     </div>
   );
 }
+
+    
