@@ -1,6 +1,7 @@
 
 "use client";
 
+import 'react-image-crop/dist/ReactCrop.css';
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
@@ -8,6 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { collection, query, onSnapshot, doc, deleteDoc, updateDoc, writeBatch, setDoc } from "firebase/firestore";
 import { Loader2, Trash2, Plus, RotateCcw, Camera, Pencil } from "lucide-react";
+import ReactCrop, { type Crop, type PixelCrop, centerCrop, makeAspectCrop } from 'react-image-crop';
 
 import { db } from "@/lib/firebase";
 import type { Product } from "@/lib/types";
@@ -58,7 +60,6 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
-
 const addProductSchema = z.object({
   name: z.string().min(1, { message: "Nama produk harus diisi." }),
   category: z.enum(["Creampuff", "Cheesecake", "Millecrepes", "Minuman", "Snackbox", "Lainnya"], {
@@ -85,6 +86,27 @@ const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, rej
   reader.readAsDataURL(file);
 });
 
+// Helper for centering the crop
+function centerAspectCrop(
+  mediaWidth: number,
+  mediaHeight: number,
+  aspect: number,
+) {
+  return centerCrop(
+    makeAspectCrop(
+      {
+        unit: '%',
+        width: 90,
+      },
+      aspect,
+      mediaWidth,
+      mediaHeight,
+    ),
+    mediaWidth,
+    mediaHeight,
+  )
+}
+
 export function ProdukClient() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -97,11 +119,14 @@ export function ProdukClient() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [sourceImage, setSourceImage] = useState<string | null>(null);
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop | null>(null);
   const [isImageMarkedForDeletion, setIsImageMarkedForDeletion] = useState(false);
+  const aspect = 1; // Square crop
 
+  const imgRef = useRef<HTMLImageElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const addForm = useForm<z.infer<typeof addProductSchema>>({
     resolver: zodResolver(addProductSchema),
@@ -148,40 +173,79 @@ export function ProdukClient() {
 
     return () => unsubscribe();
   }, [toast]);
+  
+  async function getCroppedImg(
+    image: HTMLImageElement,
+    crop: PixelCrop
+  ): Promise<string> {
+    const canvas = document.createElement("canvas");
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+    canvas.width = crop.width;
+    canvas.height = crop.height;
+    const ctx = canvas.getContext("2d");
+  
+    if (!ctx) {
+      throw new Error("No 2d context");
+    }
+  
+    ctx.drawImage(
+      image,
+      crop.x * scaleX,
+      crop.y * scaleY,
+      crop.width * scaleX,
+      crop.height * scaleY,
+      0,
+      0,
+      crop.width,
+      crop.height
+    );
+  
+    return new Promise((resolve) => {
+      resolve(canvas.toDataURL("image/jpeg"));
+    });
+  }
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 1024 * 1024) { // 1MB limit
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
         toast({
           variant: "destructive",
           title: "Ukuran Gambar Terlalu Besar",
-          description: "Ukuran gambar maksimal adalah 1MB.",
+          description: "Ukuran gambar maksimal adalah 2MB.",
         });
         return;
       }
-      setSelectedFile(file);
-      setImagePreview(URL.createObjectURL(file));
+      setCrop(undefined); // Clear crop when new image is selected
+      const dataUri = await fileToDataUri(file);
+      setSourceImage(dataUri);
       setIsImageMarkedForDeletion(false);
     }
   };
 
   const handleRemoveImage = () => {
-    setImagePreview("https://placehold.co/600x400.png");
-    setSelectedFile(null);
+    setSourceImage(null);
+    setCompletedCrop(null);
+    setCrop(undefined);
     setIsImageMarkedForDeletion(true);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
   
+  function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    const { width, height } = e.currentTarget;
+    setCrop(centerAspectCrop(width, height, aspect));
+  }
+
   const onAddSubmit = async (values: z.infer<typeof addProductSchema>) => {
     setIsLoading(true);
     try {
       let imageUrl = "https://placehold.co/600x400.png";
       
-      if (selectedFile) {
-        imageUrl = await fileToDataUri(selectedFile);
+      if (completedCrop && imgRef.current) {
+        imageUrl = await getCroppedImg(imgRef.current, completedCrop);
       }
 
       const newProductRef = doc(collection(db, "products"));
@@ -219,8 +283,8 @@ export function ProdukClient() {
       const productRef = doc(db, "products", productToEdit.id);
       const updates: { name: string; image?: string } = { name: values.name };
 
-      if (selectedFile) {
-        updates.image = await fileToDataUri(selectedFile);
+      if (completedCrop && imgRef.current) {
+        updates.image = await getCroppedImg(imgRef.current, completedCrop);
       } else if (isImageMarkedForDeletion) {
         updates.image = "https://placehold.co/600x400.png";
       }
@@ -304,8 +368,9 @@ export function ProdukClient() {
   const openEditDialog = (product: Product) => {
     setProductToEdit(product);
     editForm.reset({ name: product.name });
-    setImagePreview(product.image);
-    setSelectedFile(null);
+    setSourceImage(product.image);
+    setCrop(undefined);
+    setCompletedCrop(null);
     setIsImageMarkedForDeletion(false);
     setIsEditDialogOpen(true);
   };
@@ -331,6 +396,18 @@ export function ProdukClient() {
       setProductToDelete(null);
     }
   };
+
+  const resetDialogState = () => {
+    addForm.reset();
+    editForm.reset();
+    setSourceImage(null);
+    setCrop(undefined);
+    setCompletedCrop(null);
+    setIsImageMarkedForDeletion(false);
+    if(fileInputRef.current) {
+        fileInputRef.current.value = "";
+    }
+  }
 
   return (
     <div className="grid gap-8">
@@ -479,11 +556,7 @@ export function ProdukClient() {
 
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
         setIsAddDialogOpen(open);
-        if (!open) {
-          addForm.reset();
-          setSelectedFile(null);
-          setImagePreview(null);
-        }
+        if (!open) resetDialogState();
       }}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -496,17 +569,34 @@ export function ProdukClient() {
             <form onSubmit={addForm.handleSubmit(onAddSubmit)} className="space-y-4 py-4">
               <div className="space-y-2 flex flex-col items-center">
                 <Label>Gambar Produk</Label>
-                <div className="w-32 h-32 rounded-lg border border-dashed flex items-center justify-center bg-muted/40">
-                  {imagePreview ? (
-                    <Image src={imagePreview} alt="Pratinjau" width={128} height={128} className="object-cover rounded-md h-full w-full" />
-                  ) : (
-                    <span className="text-xs text-muted-foreground text-center p-2">Pratinjau Gambar</span>
-                  )}
-                </div>
-                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isLoading}>
-                  <Camera className="mr-2 h-4 w-4" />
-                  Pilih Gambar
-                </Button>
+                {sourceImage ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <ReactCrop
+                      crop={crop}
+                      onChange={(_, percentCrop) => setCrop(percentCrop)}
+                      onComplete={(c) => setCompletedCrop(c)}
+                      aspect={aspect}
+                      minWidth={100}
+                    >
+                      <Image
+                        ref={imgRef}
+                        alt="Crop preview"
+                        src={sourceImage}
+                        onLoad={onImageLoad}
+                        width={400}
+                        height={400}
+                        style={{ maxHeight: '70vh' }}
+                      />
+                    </ReactCrop>
+                    <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isLoading}>
+                      <Camera className="mr-2 h-4 w-4" /> Ganti Gambar
+                    </Button>
+                  </div>
+                ) : (
+                  <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isLoading}>
+                    <Camera className="mr-2 h-4 w-4" /> Pilih Gambar
+                  </Button>
+                )}
                 <Input 
                   ref={fileInputRef}
                   type="file"
@@ -574,13 +664,7 @@ export function ProdukClient() {
       
       <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
         setIsEditDialogOpen(open);
-        if (!open) {
-          editForm.reset();
-          setProductToEdit(null);
-          setImagePreview(null);
-          setSelectedFile(null);
-          setIsImageMarkedForDeletion(false);
-        }
+        if (!open) resetDialogState();
       }}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -593,13 +677,32 @@ export function ProdukClient() {
             <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4 py-4">
               <div className="space-y-2 flex flex-col items-center">
                 <Label>Gambar Produk</Label>
-                <div className="w-32 h-32 rounded-lg border border-dashed flex items-center justify-center bg-muted/40">
-                  {imagePreview ? (
-                    <Image src={imagePreview} alt="Pratinjau" width={128} height={128} className="object-cover rounded-md h-full w-full" />
-                  ) : (
+                {sourceImage && !isImageMarkedForDeletion ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <ReactCrop
+                      crop={crop}
+                      onChange={(_, percentCrop) => setCrop(percentCrop)}
+                      onComplete={(c) => setCompletedCrop(c)}
+                      aspect={aspect}
+                      minWidth={100}
+                    >
+                      <Image
+                        ref={imgRef}
+                        alt="Crop preview"
+                        src={sourceImage}
+                        onLoad={onImageLoad}
+                        width={400}
+                        height={400}
+                        style={{ maxHeight: '70vh' }}
+                        crossOrigin="anonymous" 
+                      />
+                    </ReactCrop>
+                  </div>
+                ) : (
+                  <div className="w-32 h-32 rounded-lg border border-dashed flex items-center justify-center bg-muted/40">
                     <span className="text-xs text-muted-foreground text-center p-2">Tidak ada gambar</span>
-                  )}
-                </div>
+                  </div>
+                )}
                 <div className="flex gap-2">
                     <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isLoading}>
                       <Camera className="mr-2 h-4 w-4" />
@@ -610,7 +713,7 @@ export function ProdukClient() {
                       variant="destructive" 
                       size="sm" 
                       onClick={handleRemoveImage} 
-                      disabled={isLoading || !imagePreview || imagePreview.includes('placehold.co')}
+                      disabled={isLoading || isImageMarkedForDeletion}
                     >
                       <Trash2 className="mr-2 h-4 w-4" />
                       Hapus
