@@ -17,7 +17,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm mx-auto">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold tracking-tight">
-            Stock Produk Dreampuff
+            Stok Produk Harian
           </CardTitle>
           <CardDescription>
             Selamat datang kembali! Silakan masuk ke akun Anda.
