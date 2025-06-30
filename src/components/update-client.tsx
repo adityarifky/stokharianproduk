@@ -146,7 +146,7 @@ export function UpdateClient() {
 
   return (
     <>
-      <p className="text-muted-foreground -mt-2 md:-mt-4 mb-4">Catat semua secara realtime.</p>
+      <p className="text-muted-foreground -mt-2 md:-mt-4 mb-4">Catat semua perubahan produk secara realtime.</p>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {products.map((product) => (
           <Card key={product.id} className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
