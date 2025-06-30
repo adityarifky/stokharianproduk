@@ -181,8 +181,6 @@ export function ProdukClient() {
 
       await setDoc(newProductRef, newProductData);
       
-      setProducts(prev => [...prev, { id: newProductRef.id, ...newProductData }].sort((a, b) => a.name.localeCompare(b.name)));
-
       toast({
         title: "Sukses!",
         description: `Produk "${values.name}" berhasil ditambahkan.`,
@@ -227,10 +225,6 @@ export function ProdukClient() {
 
       await updateDoc(productRef, updates);
       
-      setProducts(prev => prev.map(p => 
-        p.id === productToEdit.id ? { ...p, ...updates } : p
-      ).sort((a, b) => a.name.localeCompare(b.name)));
-
       toast({
         title: "Sukses!",
         description: `Produk "${values.name}" berhasil diupdate.`,
