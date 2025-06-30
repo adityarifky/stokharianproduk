@@ -3,6 +3,17 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import type { Product } from "@/lib/types";
+import { db } from "@/lib/firebase";
+import {
+  collection,
+  query,
+  onSnapshot,
+  doc,
+  updateDoc,
+  writeBatch,
+  getDocs,
+} from "firebase/firestore";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -15,10 +26,13 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 
 const seedProducts: Omit<Product, "id">[] = [
-  { name: "Puff Cokelat", stock: 50, image: "https://placehold.co/600x400.png" },
-  { name: "Puff Keju", stock: 35, image: "https://placehold.co/600x400.png" },
-  { name: "Puff Vanila", stock: 42, image: "https://placehold.co/600x400.png" },
-  { name: "Donat Gula", stock: 60, image: "https://placehold.co/600x400.png" },
+  { name: "Puff Cokelat", stock: 50, image: "https://placehold.co/600x400.png", category: "Creampuff" },
+  { name: "Puff Keju", stock: 35, image: "https://placehold.co/600x400.png", category: "Creampuff" },
+  { name: "Red Velvet Cheesecake", stock: 20, image: "https://placehold.co/600x400.png", category: "Cheesecake" },
+  { name: "Chocolate Millecrepes", stock: 15, image: "https://placehold.co/600x400.png", category: "Millecrepes" },
+  { name: "Kopi Gula Aren", stock: 40, image: "https://placehold.co/600x400.png", category: "Minuman" },
+  { name: "Paket Snackbox A", stock: 10, image: "https://placehold.co/600x400.png", category: "Snackbox" },
+  { name: "Donat Gula", stock: 60, image: "https://placehold.co/600x400.png", category: "Lainnya" },
 ];
 
 const updateStockSchema = z.object({
@@ -28,6 +42,14 @@ type UpdateStockForm = z.infer<typeof updateStockSchema>;
 
 export function DashboardClient() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categoryCounts, setCategoryCounts] = useState({
+    Creampuff: 0,
+    Cheesecake: 0,
+    Millecrepes: 0,
+    Minuman: 0,
+    Snackbox: 0,
+    Lainnya: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [isUpdateStockDialogOpen, setIsUpdateStockDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -42,18 +64,57 @@ export function DashboardClient() {
   } = useForm<UpdateStockForm>({ resolver: zodResolver(updateStockSchema) });
 
   useEffect(() => {
-    setLoading(true);
-    // Menggunakan data lokal untuk debugging, bukan Firestore
-    const initialProducts: Product[] = seedProducts.map((p, index) => ({
-      ...p,
-      id: `product-${index + 1}`,
-    }));
-    // Simulasi penundaan jaringan
-    setTimeout(() => {
-      setProducts(initialProducts);
+    const q = query(collection(db, "products"));
+
+    const seedDatabase = async () => {
+      const batch = writeBatch(db);
+      seedProducts.forEach((productData) => {
+        const docRef = doc(collection(db, "products"));
+        batch.set(docRef, productData);
+      });
+      await batch.commit();
+    };
+
+    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
+      if (querySnapshot.empty) {
+        await seedDatabase();
+      } else {
+        const productData: Product[] = [];
+        querySnapshot.forEach((doc) => {
+          productData.push({ id: doc.id, ...doc.data() } as Product);
+        });
+        setProducts(productData);
+      }
       setLoading(false);
-    }, 500);
-  }, []);
+    }, (error) => {
+      console.error("Error fetching products: ", error);
+      setLoading(false);
+      toast({
+        variant: "destructive",
+        title: "Gagal Memuat Data",
+        description: "Tidak dapat terhubung ke database. Coba muat ulang halaman.",
+      });
+    });
+
+    return () => unsubscribe();
+  }, [toast]);
+
+  useEffect(() => {
+    const counts = {
+      Creampuff: 0,
+      Cheesecake: 0,
+      Millecrepes: 0,
+      Minuman: 0,
+      Snackbox: 0,
+      Lainnya: 0,
+    };
+    products.forEach(product => {
+      if (product.category in counts) {
+        counts[product.category]++;
+      }
+    });
+    setCategoryCounts(counts);
+  }, [products]);
 
   const openUpdateDialog = (product: Product, action: "add" | "subtract") => {
     setSelectedProduct(product);
@@ -62,37 +123,41 @@ export function DashboardClient() {
     setIsUpdateStockDialogOpen(true);
   };
 
-  const handleUpdateStock: SubmitHandler<UpdateStockForm> = (data) => {
+  const handleUpdateStock: SubmitHandler<UpdateStockForm> = async (data) => {
     if (!selectedProduct) return;
 
     const amount = data.amount;
+    const newStock = updateAction === 'add' ? selectedProduct.stock + amount : selectedProduct.stock - amount;
 
-    setProducts(prevProducts =>
-      prevProducts.map(p => {
-        if (p.id === selectedProduct.id) {
-          const newStock = updateAction === 'add' ? p.stock + amount : p.stock - amount;
-          if (newStock < 0) {
-            toast({
-              variant: "destructive",
-              title: "Gagal Memperbarui Stok",
-              description: "Stok tidak boleh kurang dari nol.",
-            });
-            return p;
-          }
-          return { ...p, stock: newStock };
-        }
-        return p;
-      })
-    );
-    
-    toast({
-      title: "Sukses",
-      description: `Stok untuk ${selectedProduct.name} telah diperbarui (lokal).`,
-    });
+    if (newStock < 0) {
+      toast({
+        variant: "destructive",
+        title: "Gagal Memperbarui Stok",
+        description: "Stok tidak boleh kurang dari nol.",
+      });
+      return;
+    }
 
-    resetUpdate();
-    setIsUpdateStockDialogOpen(false);
-    setSelectedProduct(null);
+    try {
+      const productRef = doc(db, "products", selectedProduct.id);
+      await updateDoc(productRef, { stock: newStock });
+      
+      toast({
+        title: "Sukses",
+        description: `Stok untuk ${selectedProduct.name} telah diperbarui.`,
+      });
+
+      resetUpdate();
+      setIsUpdateStockDialogOpen(false);
+      setSelectedProduct(null);
+    } catch (error) {
+      console.error("Error updating stock: ", error);
+      toast({
+        variant: "destructive",
+        title: "Gagal Memperbarui Stok",
+        description: "Terjadi kesalahan saat menyimpan ke database.",
+      });
+    }
   };
   
   if (loading) {
@@ -112,7 +177,7 @@ export function DashboardClient() {
             <Cookie className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">{categoryCounts.Creampuff}</div>
             <p className="text-xs text-muted-foreground">Produk</p>
           </CardContent>
         </Card>
@@ -122,7 +187,7 @@ export function DashboardClient() {
             <CakeSlice className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">{categoryCounts.Cheesecake}</div>
             <p className="text-xs text-muted-foreground">Produk</p>
           </CardContent>
         </Card>
@@ -132,7 +197,7 @@ export function DashboardClient() {
             <Layers className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">{categoryCounts.Millecrepes}</div>
             <p className="text-xs text-muted-foreground">Produk</p>
           </CardContent>
         </Card>
@@ -142,7 +207,7 @@ export function DashboardClient() {
             <CupSoda className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">{categoryCounts.Minuman}</div>
             <p className="text-xs text-muted-foreground">Produk</p>
           </CardContent>
         </Card>
@@ -152,7 +217,7 @@ export function DashboardClient() {
             <Box className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">{categoryCounts.Snackbox}</div>
             <p className="text-xs text-muted-foreground">Produk</p>
           </CardContent>
         </Card>
@@ -162,7 +227,7 @@ export function DashboardClient() {
             <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">{categoryCounts.Lainnya}</div>
             <p className="text-xs text-muted-foreground">Produk</p>
           </CardContent>
         </Card>
