@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -54,6 +55,7 @@ export function DashboardClient() {
   const [isUpdateStockDialogOpen, setIsUpdateStockDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [updateAction, setUpdateAction] = useState<"add" | "subtract">("add");
+  const [currentDate, setCurrentDate] = useState("");
   const { toast } = useToast();
 
   const {
@@ -77,6 +79,7 @@ export function DashboardClient() {
 
     const unsubscribe = onSnapshot(q, async (querySnapshot) => {
       if (querySnapshot.empty) {
+        setLoading(true);
         await seedDatabase();
       } else {
         const productData: Product[] = [];
@@ -115,6 +118,17 @@ export function DashboardClient() {
     });
     setCategoryCounts(counts);
   }, [products]);
+  
+  useEffect(() => {
+    const today = new Date();
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    };
+    setCurrentDate(today.toLocaleDateString('id-ID', options).replace(/,/g, ''));
+  }, []);
 
   const openUpdateDialog = (product: Product, action: "add" | "subtract") => {
     setSelectedProduct(product);
@@ -178,7 +192,7 @@ export function DashboardClient() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{categoryCounts.Creampuff}</div>
-            <p className="text-xs text-muted-foreground">Produk</p>
+            <p className="text-xs text-muted-foreground">{currentDate || 'Memuat...'}</p>
           </CardContent>
         </Card>
         <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
@@ -188,7 +202,7 @@ export function DashboardClient() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{categoryCounts.Cheesecake}</div>
-            <p className="text-xs text-muted-foreground">Produk</p>
+            <p className="text-xs text-muted-foreground">{currentDate || 'Memuat...'}</p>
           </CardContent>
         </Card>
         <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
@@ -198,7 +212,7 @@ export function DashboardClient() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{categoryCounts.Millecrepes}</div>
-            <p className="text-xs text-muted-foreground">Produk</p>
+            <p className="text-xs text-muted-foreground">{currentDate || 'Memuat...'}</p>
           </CardContent>
         </Card>
         <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
@@ -208,7 +222,7 @@ export function DashboardClient() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{categoryCounts.Minuman}</div>
-            <p className="text-xs text-muted-foreground">Produk</p>
+            <p className="text-xs text-muted-foreground">{currentDate || 'Memuat...'}</p>
           </CardContent>
         </Card>
         <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
@@ -218,7 +232,7 @@ export function DashboardClient() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{categoryCounts.Snackbox}</div>
-            <p className="text-xs text-muted-foreground">Produk</p>
+            <p className="text-xs text-muted-foreground">{currentDate || 'Memuat...'}</p>
           </CardContent>
         </Card>
         <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
@@ -228,7 +242,7 @@ export function DashboardClient() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{categoryCounts.Lainnya}</div>
-            <p className="text-xs text-muted-foreground">Produk</p>
+            <p className="text-xs text-muted-foreground">{currentDate || 'Memuat...'}</p>
           </CardContent>
         </Card>
       </div>
