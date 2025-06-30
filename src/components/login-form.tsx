@@ -20,17 +20,17 @@ export function LoginForm() {
         <Label htmlFor="email">Email</Label>
         <div className="relative">
           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input id="email" type="email" placeholder="nama@contoh.com" required className="pl-10" />
+          <Input id="email" type="email" placeholder="nama@contoh.com" required className="pl-10" suppressHydrationWarning />
         </div>
       </div>
       <div className="grid gap-2">
         <Label htmlFor="password">Password</Label>
         <div className="relative">
           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input id="password" type="password" required className="pl-10" />
+          <Input id="password" type="password" required className="pl-10" suppressHydrationWarning />
         </div>
       </div>
-      <Button type="submit" className="w-full mt-2">
+      <Button type="submit" className="w-full mt-2" suppressHydrationWarning>
         Masuk
       </Button>
     </form>
