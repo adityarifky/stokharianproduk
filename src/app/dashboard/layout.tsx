@@ -11,7 +11,7 @@ import {
   Loader2,
   FilePenLine,
   Users,
-  Package,
+  Croissant,
 } from "lucide-react";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -43,7 +43,7 @@ export default function DashboardLayout({
   const menuItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/dashboard/update", label: "Update Produk", icon: FilePenLine },
-    { href: "/dashboard/produk", label: "Produk", icon: Package },
+    { href: "/dashboard/produk", label: "Produk", icon: Croissant },
     { href: "#", label: "Riwayat", icon: History },
     { href: "#", label: "Laporan", icon: BarChart },
     { href: "#", label: "Pengguna", icon: Users },
