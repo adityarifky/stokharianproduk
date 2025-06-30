@@ -59,7 +59,6 @@ import {
 
 const addProductSchema = z.object({
   name: z.string().min(1, { message: "Nama produk harus diisi." }),
-  stock: z.coerce.number().int().min(0, { message: "Stok awal minimal 0." }),
   category: z.enum(["Creampuff", "Cheesecake", "Millecrepes", "Minuman", "Snackbox", "Lainnya"], {
     required_error: "Kategori harus dipilih.",
   }),
@@ -85,7 +84,6 @@ export function ProdukClient() {
     resolver: zodResolver(addProductSchema),
     defaultValues: {
       name: "",
-      stock: 0,
     },
   });
 
@@ -125,6 +123,7 @@ export function ProdukClient() {
     try {
       await addDoc(collection(db, "products"), {
         ...values,
+        stock: 0,
         image: "https://placehold.co/600x400.png",
       });
 
@@ -132,7 +131,7 @@ export function ProdukClient() {
         title: "Sukses!",
         description: `Produk "${values.name}" berhasil ditambahkan.`,
       });
-      addForm.reset({ name: "", stock: 0, category: undefined });
+      addForm.reset({ name: "", category: undefined });
       setIsAddDialogOpen(false);
     } catch (error) {
       console.error("Error adding product: ", error);
@@ -318,7 +317,7 @@ export function ProdukClient() {
           <DialogHeader>
             <DialogTitle>Tambah Produk Baru</DialogTitle>
             <DialogDescription>
-              Gunakan formulir ini untuk menambah jenis produk baru dan memasukkan stok awalnya.
+              Gunakan formulir ini untuk menambah jenis produk baru. Stok awal akan otomatis diatur ke 0.
             </DialogDescription>
           </DialogHeader>
           <Form {...addForm}>
@@ -331,19 +330,6 @@ export function ProdukClient() {
                     <FormLabel>Nama Produk</FormLabel>
                     <FormControl>
                       <Input placeholder="cth. Puff Cokelat" {...field} disabled={isLoading} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={addForm.control}
-                name="stock"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Stok Awal</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="cth. 50" {...field} disabled={isLoading} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
