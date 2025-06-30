@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { collection, query, onSnapshot, doc, deleteDoc, updateDoc, writeBatch, setDoc } from "firebase/firestore";
-import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject, ref } from "firebase/storage";
 import { Loader2, Trash2, Plus, RotateCcw, Camera, Pencil } from "lucide-react";
 
 import { db, storage } from "@/lib/firebase";
@@ -89,11 +89,11 @@ export function ProdukClient() {
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
-
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isImageMarkedForDeletion, setIsImageMarkedForDeletion] = useState(false);
 
 
   const addForm = useForm<z.infer<typeof addProductSchema>>({
@@ -147,6 +147,16 @@ export function ProdukClient() {
     if (file) {
       setSelectedFile(file);
       setImagePreview(URL.createObjectURL(file));
+      setIsImageMarkedForDeletion(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setImagePreview("https://placehold.co/600x400.png");
+    setSelectedFile(null);
+    setIsImageMarkedForDeletion(true);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
   
@@ -196,25 +206,44 @@ export function ProdukClient() {
     let success = false;
     try {
       const productRef = doc(db, "products", productToEdit.id);
-      await updateDoc(productRef, { name: values.name });
+      const updates: { name: string; image?: string } = { name: values.name };
+
+      if (selectedFile) {
+        const imageFileRef = storageRef(storage, `product-images/${productToEdit.id}`);
+        await uploadBytes(imageFileRef, selectedFile);
+        updates.image = await getDownloadURL(imageFileRef);
+      } else if (isImageMarkedForDeletion) {
+        updates.image = "https://placehold.co/600x400.png";
+        if (productToEdit.image && !productToEdit.image.includes('placehold.co')) {
+            try {
+                const oldImageRef = ref(storage, productToEdit.image);
+                await deleteObject(oldImageRef);
+            } catch (storageError: any) {
+                if (storageError.code !== 'storage/object-not-found') {
+                    console.error("Could not delete old image:", storageError);
+                }
+            }
+        }
+      }
+
+      await updateDoc(productRef, updates);
 
       toast({
         title: "Sukses!",
-        description: `Nama produk berhasil diubah menjadi "${values.name}".`,
+        description: `Produk "${values.name}" berhasil diupdate.`,
       });
       success = true;
     } catch (error) {
-      console.error("Error updating product name: ", error);
+      console.error("Error updating product: ", error);
       toast({
         variant: "destructive",
-        title: "Gagal Mengubah Nama",
+        title: "Gagal Mengupdate Produk",
         description: "Terjadi kesalahan saat menyimpan ke database.",
       });
     } finally {
       setIsLoading(false);
       if (success) {
         setIsEditDialogOpen(false);
-        setProductToEdit(null);
       }
     }
   };
@@ -278,6 +307,9 @@ export function ProdukClient() {
   const openEditDialog = (product: Product) => {
     setProductToEdit(product);
     editForm.reset({ name: product.name });
+    setImagePreview(product.image);
+    setSelectedFile(null);
+    setIsImageMarkedForDeletion(false);
     setIsEditDialogOpen(true);
   };
 
@@ -536,17 +568,55 @@ export function ProdukClient() {
         if (!open) {
           editForm.reset();
           setProductToEdit(null);
+          setImagePreview(null);
+          setSelectedFile(null);
+          setIsImageMarkedForDeletion(false);
         }
       }}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Edit Nama Produk</DialogTitle>
+            <DialogTitle>Edit Produk</DialogTitle>
             <DialogDescription>
-              Ubah nama produk. Perubahan akan tersimpan secara permanen.
+              Ubah nama atau gambar produk. Perubahan akan tersimpan secara permanen.
             </DialogDescription>
           </DialogHeader>
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4 py-4">
+              <div className="space-y-2 flex flex-col items-center">
+                <Label>Gambar Produk</Label>
+                <div className="w-32 h-32 rounded-lg border border-dashed flex items-center justify-center bg-muted/40">
+                  {imagePreview ? (
+                    <Image src={imagePreview} alt="Pratinjau" width={128} height={128} className="object-cover rounded-md h-full w-full" />
+                  ) : (
+                    <span className="text-xs text-muted-foreground text-center p-2">Tidak ada gambar</span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isLoading}>
+                      <Camera className="mr-2 h-4 w-4" />
+                      Ubah
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="destructive" 
+                      size="sm" 
+                      onClick={handleRemoveImage} 
+                      disabled={isLoading || !imagePreview || imagePreview.includes('placehold.co')}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Hapus
+                    </Button>
+                </div>
+                <Input 
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept="image/png, image/jpeg"
+                  onChange={handleFileChange}
+                  disabled={isLoading}
+                />
+              </div>
+
               <FormField
                 control={editForm.control}
                 name="name"
