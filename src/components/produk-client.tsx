@@ -153,17 +153,14 @@ export function ProdukClient() {
 
   useEffect(() => {
     setLoadingProducts(true);
-    console.log("Setting up Firestore listener...");
     const q = query(collection(db, "products"));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      console.log("Firestore data received.");
       const productsData: Product[] = [];
       querySnapshot.forEach((doc) => {
         productsData.push({ id: doc.id, ...doc.data() } as Product);
       });
       setProducts(productsData.sort((a, b) => a.name.localeCompare(b.name)));
       setLoadingProducts(false);
-      console.log("Products state updated.");
     }, (error) => {
       console.error("Firestore listener error:", error);
       toast({
@@ -175,7 +172,6 @@ export function ProdukClient() {
     });
 
     return () => {
-      console.log("Cleaning up Firestore listener.");
       unsubscribe();
     }
   }, [toast]);
@@ -228,7 +224,6 @@ export function ProdukClient() {
         const dataUri = await fileToDataUri(file);
         setSourceImage(dataUri);
         setIsImageMarkedForDeletion(false);
-        console.log("File converted to Data URI successfully.");
       } catch (error) {
         console.error("Error converting file to Data URI:", error);
         toast({
@@ -257,20 +252,17 @@ export function ProdukClient() {
 
   const onAddSubmit = async (values: z.infer<typeof addProductSchema>) => {
     setIsLoading(true);
-    console.log("Add Product submission started...");
     try {
       let imageUrl = "https://placehold.co/600x400.png";
       
       if (sourceImage && !isImageMarkedForDeletion) {
         if (completedCrop && imgRef.current) {
-          console.log("Cropping image...");
           imageUrl = await getCroppedImg(imgRef.current, completedCrop);
         } else {
           imageUrl = sourceImage;
         }
       }
 
-      console.log("Preparing new product data...");
       const newProductRef = doc(collection(db, "products"));
       const newProductData = {
         id: newProductRef.id,
@@ -280,9 +272,7 @@ export function ProdukClient() {
         image: imageUrl,
       };
 
-      console.log("Saving new product to Firestore...");
       await setDoc(newProductRef, newProductData);
-      console.log("New product saved successfully.");
       
       toast({
         title: "Sukses!",
@@ -298,34 +288,27 @@ export function ProdukClient() {
       });
     } finally {
       setIsLoading(false);
-      console.log("Add Product submission finished.");
     }
   };
 
   const onEditSubmit = async (values: z.infer<typeof editProductSchema>) => {
     if (!productToEdit) return;
     setIsLoading(true);
-    console.log(`Edit Product submission started for ${productToEdit.id}...`);
     try {
       const productRef = doc(db, "products", productToEdit.id);
       const updates: { name: string; image?: string } = { name: values.name };
 
       if (sourceImage && !isImageMarkedForDeletion) {
         if (completedCrop && imgRef.current) {
-          console.log("Cropping image for edit...");
           updates.image = await getCroppedImg(imgRef.current, completedCrop);
         } else if (sourceImage !== productToEdit.image) {
-          // If a new image was selected but not cropped
           updates.image = sourceImage;
         }
       } else if (isImageMarkedForDeletion) {
-        console.log("Marking image for deletion...");
         updates.image = "https://placehold.co/600x400.png";
       }
       
-      console.log("Updating product in Firestore...");
       await updateDoc(productRef, updates);
-      console.log("Product updated successfully.");
       
       toast({
         title: "Sukses!",
@@ -342,7 +325,6 @@ export function ProdukClient() {
       });
     } finally {
       setIsLoading(false);
-      console.log("Edit Product submission finished.");
     }
   };
 
@@ -449,150 +431,165 @@ export function ProdukClient() {
   }
 
   return (
-    <div className="grid gap-8">
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle>Update Stok Awal Produk</CardTitle>
-              <CardDescription>
-                Gunakan formulir ini untuk mengatur ulang jumlah stok produk yang sudah ada.
-              </CardDescription>
-            </div>
-            <Button variant="destructive" onClick={() => setIsResetDialogOpen(true)} disabled={isLoading}>
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Reset Semua Stok
-            </Button>
+    <div className="flex h-full flex-col">
+      <div className="shrink-0 border-b p-4 md:p-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Manajemen Produk</h1>
+            <p className="text-muted-foreground">
+              Tambah, edit, hapus, dan atur stok awal untuk semua produk.
+            </p>
           </div>
-        </CardHeader>
-        <CardContent>
-          <Form {...updateForm}>
-            <form onSubmit={updateForm.handleSubmit(onUpdateStockSubmit)} className="space-y-6">
-              <FormField
-                control={updateForm.control}
-                name="productId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nama Produk</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={isLoading}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih produk untuk diupdate" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {products.map((product) => (
-                          <SelectItem key={product.id} value={product.id}>
-                            {product.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={updateForm.control}
-                name="stock"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Jumlah Stok Baru</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="cth. 50" {...field} disabled={isLoading} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Mengupdate...
-                  </>
-                ) : (
-                  "Update Stok"
-                )}
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+          <Button onClick={() => setIsAddDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Tambah Produk Baru
+          </Button>
+        </div>
+      </div>
       
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle>Daftar Produk</CardTitle>
-              <CardDescription>Kelola semua produk yang terdaftar di dalam stok.</CardDescription>
-            </div>
-            <Button onClick={() => setIsAddDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Tambah Produk Baru
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loadingProducts ? (
-            <div className="flex justify-center items-center h-40">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[60px]">Gambar</TableHead>
-                  <TableHead>Nama Produk</TableHead>
-                  <TableHead>Kategori</TableHead>
-                  <TableHead className="text-right">Stok</TableHead>
-                  <TableHead className="text-center w-[120px]">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {products.map((product) => (
-                  <TableRow key={product.id}>
-                    <TableCell>
-                      <Image
-                        src={product.image}
-                        alt={product.name}
-                        width={40}
-                        height={40}
-                        className="rounded-md object-cover aspect-square"
-                        data-ai-hint="product food"
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">{product.name}</TableCell>
-                    <TableCell>{product.category}</TableCell>
-                    <TableCell className="text-right">{product.stock}</TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex justify-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => openEditDialog(product)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                          <span className="sr-only">Edit</span>
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          onClick={() => openDeleteDialog(product.id)}
-                          disabled={isLoading}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">Hapus</span>
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <div className="flex-1 overflow-y-auto p-4 md:p-8">
+        <div className="grid gap-8">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Update Stok Awal Produk</CardTitle>
+                  <CardDescription>
+                    Gunakan formulir ini untuk mengatur ulang jumlah stok produk yang sudah ada.
+                  </CardDescription>
+                </div>
+                <Button variant="destructive" onClick={() => setIsResetDialogOpen(true)} disabled={isLoading}>
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Reset Semua Stok
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Form {...updateForm}>
+                <form onSubmit={updateForm.handleSubmit(onUpdateStockSubmit)} className="space-y-6">
+                  <FormField
+                    control={updateForm.control}
+                    name="productId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nama Produk</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value} disabled={isLoading}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Pilih produk untuk diupdate" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {products.map((product) => (
+                              <SelectItem key={product.id} value={product.id}>
+                                {product.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={updateForm.control}
+                    name="stock"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Jumlah Stok Baru</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="cth. 50" {...field} disabled={isLoading} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Mengupdate...
+                      </>
+                    ) : (
+                      "Update Stok"
+                    )}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Daftar Produk</CardTitle>
+                  <CardDescription>Kelola semua produk yang terdaftar di dalam stok.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingProducts ? (
+                <div className="flex justify-center items-center h-40">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[60px]">Gambar</TableHead>
+                      <TableHead>Nama Produk</TableHead>
+                      <TableHead>Kategori</TableHead>
+                      <TableHead className="text-right">Stok</TableHead>
+                      <TableHead className="text-center w-[120px]">Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {products.map((product) => (
+                      <TableRow key={product.id}>
+                        <TableCell>
+                          <Image
+                            src={product.image}
+                            alt={product.name}
+                            width={40}
+                            height={40}
+                            className="rounded-md object-cover aspect-square"
+                            data-ai-hint="product food"
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">{product.name}</TableCell>
+                        <TableCell>{product.category}</TableCell>
+                        <TableCell className="text-right">{product.stock}</TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex justify-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => openEditDialog(product)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                              <span className="sr-only">Edit</span>
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              onClick={() => openDeleteDialog(product.id)}
+                              disabled={isLoading}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">Hapus</span>
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
         setIsAddDialogOpen(open);
