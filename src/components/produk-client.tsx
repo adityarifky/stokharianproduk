@@ -138,6 +138,7 @@ export function ProdukClient() {
   
   const onAddSubmit = async (values: z.infer<typeof addProductSchema>) => {
     setIsLoading(true);
+    let success = false;
     try {
       let imageUrl = "https://placehold.co/600x400.png";
       const newProductRef = doc(collection(db, "products"));
@@ -158,7 +159,7 @@ export function ProdukClient() {
         title: "Sukses!",
         description: `Produk "${values.name}" berhasil ditambahkan.`,
       });
-      setIsAddDialogOpen(false);
+      success = true;
     } catch (error) {
       console.error("Error adding product: ", error);
       toast({
@@ -166,8 +167,12 @@ export function ProdukClient() {
         title: "Gagal Menambahkan Produk",
         description: "Terjadi kesalahan saat menyimpan ke database.",
       });
+      success = false;
     } finally {
       setIsLoading(false);
+      if (success) {
+        setIsAddDialogOpen(false);
+      }
     }
   };
 
@@ -375,7 +380,7 @@ export function ProdukClient() {
       <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
         setIsAddDialogOpen(open);
         if (!open) {
-          addForm.reset({ name: "", category: undefined });
+          addForm.reset();
           setSelectedFile(null);
           setImagePreview(null);
         }
