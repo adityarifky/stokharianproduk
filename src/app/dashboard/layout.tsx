@@ -47,6 +47,9 @@ export default function DashboardLayout({
     { href: "#", label: "Pengguna", icon: Users },
   ];
 
+  const currentMenuItem = menuItems.find((item) => item.href === pathname);
+  const pageTitle = currentMenuItem?.label || "Dashboard";
+
   if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
@@ -72,6 +75,9 @@ export default function DashboardLayout({
       </header>
       
       <main className="flex flex-1 flex-col gap-4 p-4 pb-20 md:gap-8 md:p-8">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold tracking-tight">{pageTitle}</h1>
+        </div>
         {children}
       </main>
 
