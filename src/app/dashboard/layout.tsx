@@ -41,7 +41,7 @@ export default function DashboardLayout({
 
   const menuItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/dashboard/update", label: "Update", icon: FilePenLine },
+    { href: "/dashboard/update", label: "Update Produk", icon: FilePenLine },
     { href: "#", label: "Riwayat", icon: History },
     { href: "#", label: "Laporan", icon: BarChart },
     { href: "#", label: "Pengguna", icon: Users },
