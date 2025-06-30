@@ -61,7 +61,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
+    <div className="flex h-screen w-full flex-col">
       <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-4 border-b bg-background px-4 md:px-6">
         <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold">
           <Image
@@ -76,7 +76,7 @@ export default function DashboardLayout({
         <UserNav />
       </header>
       
-      <main className="flex flex-1 flex-col gap-4 p-4 pb-24 md:gap-8 md:p-8">
+      <main className="flex flex-1 flex-col gap-4 overflow-y-auto p-4 pb-24 md:gap-8 md:p-8">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold tracking-tight">{pageTitle}</h1>
         </div>
