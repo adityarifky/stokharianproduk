@@ -432,17 +432,6 @@ export function ProdukClient() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="shrink-0 border-b p-4 md:p-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Manajemen Produk</h1>
-            <p className="text-muted-foreground">
-              Tambah, edit, hapus, dan atur stok awal untuk semua produk.
-            </p>
-          </div>
-        </div>
-      </div>
-      
       <div className="flex-1 overflow-y-auto p-4 md:p-8">
         <div className="grid gap-8">
           <Card>
