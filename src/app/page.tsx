@@ -6,7 +6,7 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       <Image
-        src="/Logo_dreampuff.png"
+        src="/Logo%20Dreampuff.png"
         alt="Dreampuff Logo"
         width={150}
         height={150}
