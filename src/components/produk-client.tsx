@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { collection, query, onSnapshot, doc, deleteDoc, updateDoc, writeBatch, setDoc } from "firebase/firestore";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
-import { Loader2, Trash2, Plus, RotateCcw, Camera } from "lucide-react";
+import { Loader2, Trash2, Plus, RotateCcw, Camera, Pencil } from "lucide-react";
 
 import { db, storage } from "@/lib/firebase";
 import type { Product } from "@/lib/types";
@@ -67,6 +67,10 @@ const addProductSchema = z.object({
   }),
 });
 
+const editProductSchema = z.object({
+  name: z.string().min(1, { message: "Nama produk harus diisi." }),
+});
+
 const updateStockSchema = z.object({
     productId: z.string({ required_error: "Produk harus dipilih." }).min(1, { message: "Produk harus dipilih." }),
     stock: z.coerce.number().int().min(0, { message: "Stok minimal 0." }),
@@ -83,6 +87,9 @@ export function ProdukClient() {
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -94,6 +101,13 @@ export function ProdukClient() {
     defaultValues: {
       name: "",
       category: undefined,
+    },
+  });
+
+  const editForm = useForm<z.infer<typeof editProductSchema>>({
+    resolver: zodResolver(editProductSchema),
+    defaultValues: {
+      name: "",
     },
   });
 
@@ -176,6 +190,35 @@ export function ProdukClient() {
     }
   };
 
+  const onEditSubmit = async (values: z.infer<typeof editProductSchema>) => {
+    if (!productToEdit) return;
+    setIsLoading(true);
+    let success = false;
+    try {
+      const productRef = doc(db, "products", productToEdit.id);
+      await updateDoc(productRef, { name: values.name });
+
+      toast({
+        title: "Sukses!",
+        description: `Nama produk berhasil diubah menjadi "${values.name}".`,
+      });
+      success = true;
+    } catch (error) {
+      console.error("Error updating product name: ", error);
+      toast({
+        variant: "destructive",
+        title: "Gagal Mengubah Nama",
+        description: "Terjadi kesalahan saat menyimpan ke database.",
+      });
+    } finally {
+      setIsLoading(false);
+      if (success) {
+        setIsEditDialogOpen(false);
+        setProductToEdit(null);
+      }
+    }
+  };
+
   const onUpdateStockSubmit = async (values: z.infer<typeof updateStockSchema>) => {
     setIsLoading(true);
     try {
@@ -230,6 +273,12 @@ export function ProdukClient() {
   const openDeleteDialog = (id: string) => {
     setProductToDelete(id);
     setIsDeleteDialogOpen(true);
+  };
+
+  const openEditDialog = (product: Product) => {
+    setProductToEdit(product);
+    editForm.reset({ name: product.name });
+    setIsEditDialogOpen(true);
   };
 
   const handleDeleteProduct = async () => {
@@ -350,7 +399,7 @@ export function ProdukClient() {
                   <TableHead>Nama Produk</TableHead>
                   <TableHead>Kategori</TableHead>
                   <TableHead className="text-right">Stok</TableHead>
-                  <TableHead className="text-center w-[100px]">Aksi</TableHead>
+                  <TableHead className="text-center w-[120px]">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -360,14 +409,24 @@ export function ProdukClient() {
                     <TableCell>{product.category}</TableCell>
                     <TableCell className="text-right">{product.stock}</TableCell>
                     <TableCell className="text-center">
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        onClick={() => openDeleteDialog(product.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Hapus</span>
-                      </Button>
+                      <div className="flex justify-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => openEditDialog(product)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                          <span className="sr-only">Edit</span>
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => openDeleteDialog(product.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">Hapus</span>
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -464,6 +523,53 @@ export function ProdukClient() {
                     </>
                   ) : (
                     "Tambah Produk"
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+        setIsEditDialogOpen(open);
+        if (!open) {
+          editForm.reset();
+          setProductToEdit(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Nama Produk</DialogTitle>
+            <DialogDescription>
+              Ubah nama produk. Perubahan akan tersimpan secara permanen.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4 py-4">
+              <FormField
+                control={editForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nama Produk</FormLabel>
+                    <FormControl>
+                      <Input placeholder="cth. Puff Cokelat" {...field} disabled={isLoading} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isLoading}>Batal</Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Menyimpan...
+                    </>
+                  ) : (
+                    "Simpan Perubahan"
                   )}
                 </Button>
               </DialogFooter>
