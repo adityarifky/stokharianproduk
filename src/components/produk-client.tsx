@@ -1,14 +1,16 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { collection, addDoc, query, onSnapshot, doc, deleteDoc, updateDoc, writeBatch } from "firebase/firestore";
-import { Loader2, Trash2, Plus, RotateCcw } from "lucide-react";
+import { collection, query, onSnapshot, doc, deleteDoc, updateDoc, writeBatch, setDoc } from "firebase/firestore";
+import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
+import { Loader2, Trash2, Plus, RotateCcw, Camera } from "lucide-react";
 
-import { db } from "@/lib/firebase";
+import { db, storage } from "@/lib/firebase";
 import type { Product } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -55,6 +57,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 
 const addProductSchema = z.object({
@@ -80,6 +83,11 @@ export function ProdukClient() {
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
 
   const addForm = useForm<z.infer<typeof addProductSchema>>({
     resolver: zodResolver(addProductSchema),
@@ -119,20 +127,36 @@ export function ProdukClient() {
     return () => unsubscribe();
   }, [toast]);
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+  
   const onAddSubmit = async (values: z.infer<typeof addProductSchema>) => {
     setIsLoading(true);
     try {
-      await addDoc(collection(db, "products"), {
+      let imageUrl = "https://placehold.co/600x400.png";
+      const newProductRef = doc(collection(db, "products"));
+
+      if (selectedFile) {
+        const imageRef = storageRef(storage, `product-images/${newProductRef.id}`);
+        await uploadBytes(imageRef, selectedFile);
+        imageUrl = await getDownloadURL(imageRef);
+      }
+
+      await setDoc(newProductRef, {
         ...values,
         stock: 0,
-        image: "https://placehold.co/600x400.png",
+        image: imageUrl,
       });
 
       toast({
         title: "Sukses!",
         description: `Produk "${values.name}" berhasil ditambahkan.`,
       });
-      addForm.reset({ name: "", category: undefined });
       setIsAddDialogOpen(false);
     } catch (error) {
       console.error("Error adding product: ", error);
@@ -347,7 +371,14 @@ export function ProdukClient() {
         </CardContent>
       </Card>
 
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+      <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+        setIsAddDialogOpen(open);
+        if (!open) {
+          addForm.reset({ name: "", category: undefined });
+          setSelectedFile(null);
+          setImagePreview(null);
+        }
+      }}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Tambah Produk Baru</DialogTitle>
@@ -356,7 +387,30 @@ export function ProdukClient() {
             </DialogDescription>
           </DialogHeader>
           <Form {...addForm}>
-            <form onSubmit={addForm.handleSubmit(onAddSubmit)} className="space-y-6 py-4">
+            <form onSubmit={addForm.handleSubmit(onAddSubmit)} className="space-y-4 py-4">
+              <div className="space-y-2 flex flex-col items-center">
+                <Label>Gambar Produk</Label>
+                <div className="w-32 h-32 rounded-lg border border-dashed flex items-center justify-center bg-muted/40">
+                  {imagePreview ? (
+                    <Image src={imagePreview} alt="Pratinjau" width={128} height={128} className="object-cover rounded-md h-full w-full" />
+                  ) : (
+                    <span className="text-xs text-muted-foreground text-center p-2">Pratinjau Gambar</span>
+                  )}
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isLoading}>
+                  <Camera className="mr-2 h-4 w-4" />
+                  Pilih Gambar
+                </Button>
+                <Input 
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept="image/png, image/jpeg"
+                  onChange={handleFileChange}
+                  disabled={isLoading}
+                />
+              </div>
+
               <FormField
                 control={addForm.control}
                 name="name"
@@ -396,7 +450,7 @@ export function ProdukClient() {
               />
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isLoading}>Batal</Button>
-                <Button type="submit" disabled={isLoading}>
+                <Button type="submit" disabled={isLoading || !selectedFile}>
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
