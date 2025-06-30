@@ -62,7 +62,7 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen w-full flex-col">
-      <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-4 border-b bg-background px-4 md:px-6">
+      <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-4 md:px-6">
         <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold">
           <Image
             src="/Logo%20Dreampuff.png"
@@ -76,14 +76,14 @@ export default function DashboardLayout({
         <UserNav />
       </header>
       
-      <main className="flex flex-1 flex-col gap-4 overflow-y-auto p-4 pb-24 md:gap-8 md:p-8">
-        <div className="flex items-center justify-between">
+      <main className="flex-1 overflow-y-auto p-4 md:p-8">
+        <div className="mb-4 flex items-center justify-between md:mb-8">
           <h1 className="text-2xl font-bold tracking-tight">{pageTitle}</h1>
         </div>
         {children}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background">
+      <nav className="z-50 shrink-0 border-t bg-background">
         <div className="grid h-16 grid-cols-6 items-center">
           {menuItems.map((item) => (
             <Link
