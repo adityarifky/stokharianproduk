@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from "next/navigation";
-import { signOut, onAuthStateChanged, updateProfile, type User } from "firebase/auth";
+import { signOut, onAuthStateChanged, type User } from "firebase/auth";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,7 +26,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { LogOut, User as UserIcon, Loader2, Camera } from "lucide-react";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 
 // Helper to convert file to Data URI
 const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, reject) => {
@@ -38,6 +39,7 @@ const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, rej
 export function UserNav() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -46,13 +48,34 @@ export function UserNav() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    let unsubscribeProfile: () => void = () => {};
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      // Clean up previous profile listener if it exists
+      unsubscribeProfile();
+
       setUser(currentUser);
-      if (currentUser?.photoURL) {
-        setPreviewUrl(currentUser.photoURL);
+      if (currentUser) {
+        // For the new user, set up a listener for their profile document in Firestore
+        const profileDocRef = doc(db, "userProfiles", currentUser.uid);
+        unsubscribeProfile = onSnapshot(profileDocRef, (docSnap) => {
+          if (docSnap.exists() && docSnap.data().photoURL) {
+            setAvatarUrl(docSnap.data().photoURL);
+          } else {
+            // Fallback to the URL from the auth profile if one was ever set
+            setAvatarUrl(currentUser.photoURL || null);
+          }
+        });
+      } else {
+        // No user, clear avatar
+        setAvatarUrl(null);
       }
     });
-    return () => unsubscribe();
+
+    return () => {
+      unsubscribeAuth();
+      unsubscribeProfile();
+    };
   }, []);
 
   const handleLogout = async () => {
@@ -67,7 +90,7 @@ export function UserNav() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 1024 * 1024) { // 1MB limit
+      if (file.size > 1024 * 1024) { // 1MB limit for Data URI in Firestore
         toast({
           variant: "destructive",
           title: "Ukuran Gambar Terlalu Besar",
@@ -85,8 +108,10 @@ export function UserNav() {
 
     setIsUploading(true);
     try {
-      const photoURL = await fileToDataUri(selectedFile);
-      await updateProfile(user, { photoURL });
+      const photoDataUri = await fileToDataUri(selectedFile);
+      // Save the Data URI to a document in Firestore instead of the auth profile
+      const profileDocRef = doc(db, "userProfiles", user.uid);
+      await setDoc(profileDocRef, { photoURL: photoDataUri }, { merge: true });
 
       toast({
         title: "Sukses",
@@ -109,7 +134,8 @@ export function UserNav() {
   
   const openDialog = () => {
     setIsProfileDialogOpen(true);
-    setPreviewUrl(user?.photoURL || null);
+    // Initialize the dialog preview with the current definitive avatar
+    setPreviewUrl(avatarUrl);
     setSelectedFile(null);
   }
 
@@ -119,7 +145,7 @@ export function UserNav() {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-8 w-8 rounded-full">
             <Avatar className="h-9 w-9">
-              <AvatarImage src={user?.photoURL || "https://placehold.co/100x100.png"} alt="@pengguna" data-ai-hint="user avatar" />
+              <AvatarImage src={avatarUrl || "https://placehold.co/100x100.png"} alt="@pengguna" data-ai-hint="user avatar" />
               <AvatarFallback>
                 {user?.email ? user.email.charAt(0).toUpperCase() : <UserIcon />}
               </AvatarFallback>
@@ -159,7 +185,7 @@ export function UserNav() {
           </DialogHeader>
           <div className="flex flex-col items-center gap-4 py-4">
             <Avatar className="h-24 w-24">
-              <AvatarImage src={previewUrl || user?.photoURL || "https://placehold.co/100x100.png"} alt="Pratinjau Profil" data-ai-hint="user avatar preview" />
+              <AvatarImage src={previewUrl || "https://placehold.co/100x100.png"} alt="Pratinjau Profil" data-ai-hint="user avatar preview" />
               <AvatarFallback>
                 {user?.email ? user.email.charAt(0).toUpperCase() : <UserIcon />}
               </AvatarFallback>
