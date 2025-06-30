@@ -106,7 +106,7 @@ export function DashboardClient() {
   return (
     <>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mb-8">
-        <Card>
+        <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Creampuff</CardTitle>
             <Cookie className="h-4 w-4 text-muted-foreground" />
@@ -116,7 +116,7 @@ export function DashboardClient() {
             <p className="text-xs text-muted-foreground">Produk</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Cheesecake</CardTitle>
             <CakeSlice className="h-4 w-4 text-muted-foreground" />
@@ -126,7 +126,7 @@ export function DashboardClient() {
             <p className="text-xs text-muted-foreground">Produk</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Millecrepes</CardTitle>
             <Layers className="h-4 w-4 text-muted-foreground" />
@@ -136,7 +136,7 @@ export function DashboardClient() {
             <p className="text-xs text-muted-foreground">Produk</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Minuman</CardTitle>
             <CupSoda className="h-4 w-4 text-muted-foreground" />
@@ -146,7 +146,7 @@ export function DashboardClient() {
             <p className="text-xs text-muted-foreground">Produk</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Snackbox</CardTitle>
             <Box className="h-4 w-4 text-muted-foreground" />
@@ -156,7 +156,7 @@ export function DashboardClient() {
             <p className="text-xs text-muted-foreground">Produk</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Lainnya</CardTitle>
             <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
@@ -171,7 +171,7 @@ export function DashboardClient() {
       <h2 className="text-xl font-bold tracking-tight mb-4">Detail Produk</h2>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {products.map((product) => (
-          <Card key={product.id}>
+          <Card key={product.id} className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
             <CardHeader>
               <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg">
                 <Image src={product.image} alt={product.name} fill className="object-cover" data-ai-hint="pastry dreampuff"/>
