@@ -450,7 +450,7 @@ export function ProdukClient() {
               />
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isLoading}>Batal</Button>
-                <Button type="submit" disabled={isLoading || !selectedFile}>
+                <Button type="submit" disabled={isLoading}>
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
