@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import type { Product } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -8,16 +8,19 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Minus, Plus, Package, Boxes, ShieldCheck, AlertTriangle, XCircle, TrendingUp } from "lucide-react";
+import { Minus, Plus, Package, Boxes, ShieldCheck, AlertTriangle, XCircle, TrendingUp, Loader2 } from "lucide-react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { collection, getDocs, doc, runTransaction, writeBatch } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useToast } from "@/hooks/use-toast";
 
-const initialProducts: Product[] = [
-  { id: "prod1", name: "Puff Cokelat", stock: 50, image: "https://placehold.co/600x400.png" },
-  { id: "prod2", name: "Puff Keju", stock: 35, image: "https://placehold.co/600x400.png" },
-  { id: "prod3", name: "Puff Vanila", stock: 42, image: "https://placehold.co/600x400.png" },
-  { id: "prod4", name: "Donat Gula", stock: 60, image: "https://placehold.co/600x400.png" },
+const seedProducts: Omit<Product, "id">[] = [
+  { name: "Puff Cokelat", stock: 50, image: "https://placehold.co/600x400.png" },
+  { name: "Puff Keju", stock: 35, image: "https://placehold.co/600x400.png" },
+  { name: "Puff Vanila", stock: 42, image: "https://placehold.co/600x400.png" },
+  { name: "Donat Gula", stock: 60, image: "https://placehold.co/600x400.png" },
 ];
 
 const updateStockSchema = z.object({
@@ -26,10 +29,12 @@ const updateStockSchema = z.object({
 type UpdateStockForm = z.infer<typeof updateStockSchema>;
 
 export function DashboardClient() {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isUpdateStockDialogOpen, setIsUpdateStockDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [updateAction, setUpdateAction] = useState<"add" | "subtract">("add");
+  const { toast } = useToast();
 
   const {
     register: registerUpdate,
@@ -38,26 +43,103 @@ export function DashboardClient() {
     reset: resetUpdate,
   } = useForm<UpdateStockForm>({ resolver: zodResolver(updateStockSchema) });
 
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true);
+      try {
+        const productsCollection = collection(db, "products");
+        const productSnapshot = await getDocs(productsCollection);
+        
+        if (productSnapshot.empty) {
+          const batch = writeBatch(db);
+          seedProducts.forEach((productData) => {
+            const docRef = doc(collection(db, "products"));
+            batch.set(docRef, productData);
+          });
+          await batch.commit();
+          const seededSnapshot = await getDocs(productsCollection);
+          const productsList = seededSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+          setProducts(productsList);
+        } else {
+          const productsList = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+          setProducts(productsList);
+        }
+      } catch (error) {
+        console.error("Error fetching products: ", error);
+        toast({
+          variant: "destructive",
+          title: "Gagal memuat data",
+          description: "Tidak dapat mengambil data produk dari server.",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [toast]);
+
   const openUpdateDialog = (product: Product, action: "add" | "subtract") => {
     setSelectedProduct(product);
     setUpdateAction(action);
     setIsUpdateStockDialogOpen(true);
   };
 
-  const handleUpdateStock: SubmitHandler<UpdateStockForm> = (data) => {
+  const handleUpdateStock: SubmitHandler<UpdateStockForm> = async (data) => {
     if (!selectedProduct) return;
 
-    setProducts(products.map(p => {
+    const productRef = doc(db, "products", selectedProduct.id);
+    const amount = data.amount;
+
+    const originalProducts = [...products];
+    const newProducts = products.map(p => {
       if (p.id === selectedProduct.id) {
-        const newStock = updateAction === 'add' ? p.stock + data.amount : p.stock - data.amount;
+        const newStock = updateAction === 'add' ? p.stock + amount : p.stock - amount;
         return { ...p, stock: Math.max(0, newStock) };
       }
       return p;
-    }));
-    
-    resetUpdate();
-    setIsUpdateStockDialogOpen(false);
-    setSelectedProduct(null);
+    });
+    setProducts(newProducts);
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const productDoc = await transaction.get(productRef);
+        if (!productDoc.exists()) {
+          throw new Error("Produk tidak ditemukan!");
+        }
+        
+        const currentStock = productDoc.data().stock;
+        let newStock;
+
+        if (updateAction === 'add') {
+          newStock = currentStock + amount;
+        } else {
+          newStock = currentStock - amount;
+          if (newStock < 0) {
+            throw new Error("Stok tidak boleh kurang dari nol.");
+          }
+        }
+        transaction.update(productRef, { stock: newStock });
+      });
+      
+      toast({
+        title: "Sukses",
+        description: `Stok untuk ${selectedProduct.name} telah diperbarui.`,
+      });
+
+    } catch (error: any) {
+      setProducts(originalProducts);
+      console.error("Update failed: ", error);
+      toast({
+        variant: "destructive",
+        title: "Gagal Memperbarui Stok",
+        description: error.message || "Terjadi kesalahan. Perubahan dibatalkan.",
+      });
+    } finally {
+      resetUpdate();
+      setIsUpdateStockDialogOpen(false);
+      setSelectedProduct(null);
+    }
   };
 
   const totalProducts = products.length;
@@ -70,6 +152,14 @@ export function DashboardClient() {
     products.length > 0 ? products[0] : { name: "N/A", stock: 0 }
   );
   
+  if (loading) {
+    return (
+      <div className="flex h-[calc(100vh-200px)] w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="flex items-center justify-between">
