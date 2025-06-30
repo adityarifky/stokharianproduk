@@ -172,12 +172,16 @@ export function ProdukClient() {
         imageUrl = await getDownloadURL(imageRef);
       }
 
-      await setDoc(newProductRef, {
+      const newProductData = {
         name: values.name,
         category: values.category,
         stock: 0,
         image: imageUrl,
-      });
+      };
+
+      await setDoc(newProductRef, newProductData);
+      
+      setProducts(prev => [...prev, { id: newProductRef.id, ...newProductData }].sort((a, b) => a.name.localeCompare(b.name)));
 
       toast({
         title: "Sukses!",
@@ -222,6 +226,10 @@ export function ProdukClient() {
       }
 
       await updateDoc(productRef, updates);
+      
+      setProducts(prev => prev.map(p => 
+        p.id === productToEdit.id ? { ...p, ...updates } : p
+      ).sort((a, b) => a.name.localeCompare(b.name)));
 
       toast({
         title: "Sukses!",
@@ -716,5 +724,3 @@ export function ProdukClient() {
     </div>
   );
 }
-
-    
