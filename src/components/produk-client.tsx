@@ -186,12 +186,18 @@ export function ProdukClient() {
         description: `Produk "${values.name}" berhasil ditambahkan.`,
       });
       setIsAddDialogOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding product: ", error);
+      let description = "Terjadi kesalahan saat menyimpan ke database.";
+      if (error.code === 'storage/unauthorized') {
+        description = "Gagal mengunggah gambar. Pastikan aturan Firebase Storage mengizinkan penulisan.";
+      } else if (error.code === 'permission-denied') {
+        description = "Gagal menyimpan produk. Pastikan aturan Firestore mengizinkan penulisan.";
+      }
       toast({
         variant: "destructive",
         title: "Gagal Menambahkan Produk",
-        description: "Terjadi kesalahan saat menyimpan ke database.",
+        description,
       });
     } finally {
       setIsLoading(false);
@@ -230,12 +236,18 @@ export function ProdukClient() {
         description: `Produk "${values.name}" berhasil diupdate.`,
       });
       setIsEditDialogOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating product: ", error);
+      let description = "Terjadi kesalahan saat menyimpan ke database.";
+      if (error.code === 'storage/unauthorized') {
+        description = "Gagal mengunggah gambar baru. Pastikan aturan Firebase Storage mengizinkan penulisan.";
+      } else if (error.code === 'permission-denied') {
+        description = "Gagal menyimpan perubahan. Pastikan aturan Firestore mengizinkan pembaruan.";
+      }
       toast({
         variant: "destructive",
         title: "Gagal Mengupdate Produk",
-        description: "Terjadi kesalahan saat menyimpan ke database.",
+        description,
       });
     } finally {
       setIsLoading(false);
@@ -254,12 +266,14 @@ export function ProdukClient() {
             description: `Stok untuk "${updatedProduct?.name}" berhasil diupdate.`,
         });
         updateForm.reset({ productId: "", stock: 0 });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error updating stock: ", error);
         toast({
             variant: "destructive",
             title: "Gagal Mengupdate Stok",
-            description: "Terjadi kesalahan saat menyimpan ke database.",
+            description: error.code === 'permission-denied'
+              ? "Akses ditolak. Pastikan aturan Firestore mengizinkan pembaruan."
+              : "Terjadi kesalahan saat menyimpan ke database.",
         });
     } finally {
         setIsLoading(false);
@@ -280,12 +294,14 @@ export function ProdukClient() {
         title: "Sukses!",
         description: "Semua stok produk berhasil di-reset ke 0.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error resetting all stock: ", error);
       toast({
         variant: "destructive",
         title: "Gagal Mereset Stok",
-        description: "Terjadi kesalahan saat berkomunikasi dengan database.",
+        description: error.code === 'permission-denied'
+          ? "Akses ditolak. Pastikan aturan Firestore mengizinkan pembaruan massal."
+          : "Terjadi kesalahan saat berkomunikasi dengan database.",
       });
     } finally {
       setIsResetDialogOpen(false);
@@ -322,6 +338,9 @@ export function ProdukClient() {
           } catch (storageError: any) {
               if (storageError.code !== 'storage/object-not-found') {
                   console.error("Could not delete product image from storage:", storageError);
+                   if (storageError.code === 'storage/unauthorized') {
+                     throw storageError; 
+                   }
               }
           }
       }
@@ -330,12 +349,18 @@ export function ProdukClient() {
         title: "Sukses!",
         description: "Produk telah berhasil dihapus."
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting product: ", error);
+      let description = "Terjadi kesalahan saat menghapus dari database.";
+      if (error.code === 'storage/unauthorized') {
+        description = "Gagal menghapus gambar. Pastikan aturan Storage mengizinkan penghapusan.";
+      } else if (error.code === 'permission-denied') {
+        description = "Gagal menghapus produk. Pastikan aturan Firestore mengizinkan penghapusan.";
+      }
       toast({
         variant: "destructive",
         title: "Gagal Menghapus Produk",
-        description: "Terjadi kesalahan saat menghapus dari database.",
+        description,
       });
     } finally {
       setIsDeleteDialogOpen(false);
