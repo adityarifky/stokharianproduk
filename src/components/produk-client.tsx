@@ -440,10 +440,6 @@ export function ProdukClient() {
               Tambah, edit, hapus, dan atur stok awal untuk semua produk.
             </p>
           </div>
-          <Button onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Tambah Produk Baru
-          </Button>
         </div>
       </div>
       
@@ -526,6 +522,10 @@ export function ProdukClient() {
                   <CardTitle>Daftar Produk</CardTitle>
                   <CardDescription>Kelola semua produk yang terdaftar di dalam stok.</CardDescription>
                 </div>
+                <Button onClick={() => setIsAddDialogOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Tambah Produk
+                </Button>
               </div>
             </CardHeader>
             <CardContent>
