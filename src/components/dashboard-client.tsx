@@ -8,23 +8,11 @@ import {
   collection,
   query,
   onSnapshot,
-  writeBatch,
-  doc,
 } from "firebase/firestore";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Cookie, CakeSlice, Layers, CupSoda, Box, MoreHorizontal } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-const seedProducts: Omit<Product, "id">[] = [
-  { name: "Puff Cokelat", stock: 50, image: "https://placehold.co/600x400.png", category: "Creampuff" },
-  { name: "Puff Keju", stock: 35, image: "https://placehold.co/600x400.png", category: "Creampuff" },
-  { name: "Red Velvet Cheesecake", stock: 20, image: "https://placehold.co/600x400.png", category: "Cheesecake" },
-  { name: "Chocolate Millecrepes", stock: 15, image: "https://placehold.co/600x400.png", category: "Millecrepes" },
-  { name: "Kopi Gula Aren", stock: 40, image: "https://placehold.co/600x400.png", category: "Minuman" },
-  { name: "Paket Snackbox A", stock: 10, image: "https://placehold.co/600x400.png", category: "Snackbox" },
-  { name: "Donat Gula", stock: 60, image: "https://placehold.co/600x400.png", category: "Lainnya" },
-];
 
 export function DashboardClient() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -41,28 +29,15 @@ export function DashboardClient() {
   const { toast } = useToast();
 
   useEffect(() => {
+    setLoading(true);
     const q = query(collection(db, "products"));
 
-    const seedDatabase = async () => {
-      const batch = writeBatch(db);
-      seedProducts.forEach((productData) => {
-        const docRef = doc(collection(db, "products"));
-        batch.set(docRef, productData);
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const productData: Product[] = [];
+      querySnapshot.forEach((doc) => {
+        productData.push({ id: doc.id, ...doc.data() } as Product);
       });
-      await batch.commit();
-    };
-
-    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
-      if (querySnapshot.empty) {
-        setLoading(true);
-        await seedDatabase();
-      } else {
-        const productData: Product[] = [];
-        querySnapshot.forEach((doc) => {
-          productData.push({ id: doc.id, ...doc.data() } as Product);
-        });
-        setProducts(productData);
-      }
+      setProducts(productData);
       setLoading(false);
     }, (error) => {
       console.error("Error fetching products: ", error);
