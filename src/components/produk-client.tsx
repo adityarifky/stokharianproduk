@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { collection, addDoc, query, onSnapshot, doc, deleteDoc } from "firebase/firestore";
-import { Loader2, Trash2, Plus } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 
 import { db } from "@/lib/firebase";
 import type { Product } from "@/lib/types";
@@ -47,13 +47,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 
 const formSchema = z.object({
@@ -73,7 +66,6 @@ export function ProdukClient() {
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -119,7 +111,6 @@ export function ProdukClient() {
         description: `Produk "${values.name}" berhasil ditambahkan.`,
       });
       form.reset({ name: "", stock: 0, category: undefined });
-      setIsAddDialogOpen(false);
     } catch (error) {
       console.error("Error adding product: ", error);
       toast({
@@ -159,17 +150,86 @@ export function ProdukClient() {
   };
 
   return (
-    <>
+    <div className="grid gap-8">
       <Card>
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <CardTitle>Daftar Produk</CardTitle>
-            <CardDescription>Kelola semua produk yang terdaftar di dalam stok.</CardDescription>
-          </div>
-          <Button onClick={() => setIsAddDialogOpen(true)} className="w-full sm:w-auto">
-            <Plus className="mr-2 h-4 w-4" />
-            Tambah Produk
-          </Button>
+        <CardHeader>
+          <CardTitle>Tambah Produk Baru</CardTitle>
+          <CardDescription>
+            Gunakan formulir ini untuk menambah jenis produk baru dan memasukkan stok awalnya.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nama Produk</FormLabel>
+                    <FormControl>
+                      <Input placeholder="cth. Puff Cokelat" {...field} disabled={isLoading} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="stock"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Stok Awal</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="cth. 50" {...field} disabled={isLoading} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kategori</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isLoading}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih kategori produk" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat} value={cat}>
+                            {cat}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Menyimpan...
+                  </>
+                ) : (
+                  "Tambah Produk"
+                )}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Daftar Produk</CardTitle>
+          <CardDescription>Kelola semua produk yang terdaftar di dalam stok.</CardDescription>
         </CardHeader>
         <CardContent>
           {loadingProducts ? (
@@ -209,80 +269,6 @@ export function ProdukClient() {
           )}
         </CardContent>
       </Card>
-      
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-              <DialogTitle>Tambah Produk Baru</DialogTitle>
-              <DialogDescription>Gunakan formulir ini untuk menambah jenis produk baru dan memasukkan stok awalnya.</DialogDescription>
-          </DialogHeader>
-          <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-4">
-              <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                  <FormItem>
-                  <FormLabel>Nama Produk</FormLabel>
-                  <FormControl>
-                      <Input placeholder="cth. Puff Cokelat" {...field} disabled={isLoading} />
-                  </FormControl>
-                  <FormMessage />
-                  </FormItem>
-              )}
-              />
-              <FormField
-              control={form.control}
-              name="stock"
-              render={({ field }) => (
-                  <FormItem>
-                  <FormLabel>Stok Awal</FormLabel>
-                  <FormControl>
-                      <Input type="number" placeholder="cth. 50" {...field} disabled={isLoading} />
-                  </FormControl>
-                  <FormMessage />
-                  </FormItem>
-              )}
-              />
-              <FormField
-              control={form.control}
-              name="category"
-              render={({ field }) => (
-                  <FormItem>
-                  <FormLabel>Kategori</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} disabled={isLoading}>
-                      <FormControl>
-                      <SelectTrigger>
-                          <SelectValue placeholder="Pilih kategori produk" />
-                      </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                      {categories.map((cat) => (
-                          <SelectItem key={cat} value={cat}>
-                          {cat}
-                          </SelectItem>
-                      ))}
-                      </SelectContent>
-                  </Select>
-                  <FormMessage />
-                  </FormItem>
-              )}
-              />
-              <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? (
-                  <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Menyimpan...
-                  </>
-              ) : (
-                  "Tambah Produk"
-              )}
-              </Button>
-          </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
@@ -303,6 +289,6 @@ export function ProdukClient() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }
