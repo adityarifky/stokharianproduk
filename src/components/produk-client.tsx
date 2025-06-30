@@ -5,8 +5,8 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { collection, addDoc, query, onSnapshot, doc, deleteDoc, updateDoc } from "firebase/firestore";
-import { Loader2, Trash2, Plus } from "lucide-react";
+import { collection, addDoc, query, onSnapshot, doc, deleteDoc, updateDoc, writeBatch } from "firebase/firestore";
+import { Loader2, Trash2, Plus, RotateCcw } from "lucide-react";
 
 import { db } from "@/lib/firebase";
 import type { Product } from "@/lib/types";
@@ -79,6 +79,7 @@ export function ProdukClient() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
 
   const addForm = useForm<z.infer<typeof addProductSchema>>({
     resolver: zodResolver(addProductSchema),
@@ -169,6 +170,32 @@ export function ProdukClient() {
     }
   };
 
+  const handleResetAllStock = async () => {
+    setIsLoading(true);
+    try {
+      const batch = writeBatch(db);
+      products.forEach((product) => {
+        const productRef = doc(db, "products", product.id);
+        batch.update(productRef, { stock: 0 });
+      });
+      await batch.commit();
+
+      toast({
+        title: "Sukses!",
+        description: "Semua stok produk berhasil di-reset ke 0.",
+      });
+    } catch (error) {
+      console.error("Error resetting all stock: ", error);
+      toast({
+        variant: "destructive",
+        title: "Gagal Mereset Stok",
+        description: "Terjadi kesalahan saat berkomunikasi dengan database.",
+      });
+    } finally {
+      setIsResetDialogOpen(false);
+      setIsLoading(false);
+    }
+  };
 
   const openDeleteDialog = (id: string) => {
     setProductToDelete(id);
@@ -200,10 +227,18 @@ export function ProdukClient() {
     <div className="grid gap-8">
       <Card>
         <CardHeader>
-          <CardTitle>Update Stok Awal Produk</CardTitle>
-          <CardDescription>
-            Gunakan formulir ini untuk mengatur ulang jumlah stok produk yang sudah ada.
-          </CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Update Stok Awal Produk</CardTitle>
+              <CardDescription>
+                Gunakan formulir ini untuk mengatur ulang jumlah stok produk yang sudah ada.
+              </CardDescription>
+            </div>
+            <Button variant="destructive" onClick={() => setIsResetDialogOpen(true)} disabled={isLoading}>
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Reset Semua Stok
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Form {...updateForm}>
@@ -392,6 +427,34 @@ export function ProdukClient() {
               onClick={handleDeleteProduct}
             >
               Ya, Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset Semua Stok Produk?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tindakan ini akan mengatur ulang stok SEMUA produk menjadi 0. Ini biasanya dilakukan setelah tutup toko harian. Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoading}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleResetAllStock}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Memproses...
+                </>
+              ) : (
+                "Ya, Reset"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
