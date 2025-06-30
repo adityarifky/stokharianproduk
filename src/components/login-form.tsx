@@ -73,6 +73,7 @@ export function LoginForm() {
                     className="pl-10"
                     {...field}
                     disabled={isLoading}
+                    suppressHydrationWarning
                   />
                 </FormControl>
               </div>
@@ -95,6 +96,7 @@ export function LoginForm() {
                     className="pl-10"
                     {...field}
                     disabled={isLoading}
+                    suppressHydrationWarning
                   />
                 </FormControl>
               </div>
@@ -102,7 +104,12 @@ export function LoginForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full mt-2" disabled={isLoading}>
+        <Button
+          type="submit"
+          className="w-full mt-2"
+          disabled={isLoading}
+          suppressHydrationWarning
+        >
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {isLoading ? 'Memproses...' : 'Masuk'}
         </Button>
