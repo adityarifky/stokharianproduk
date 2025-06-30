@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from "next/navigation";
 import { signOut, onAuthStateChanged, updateProfile, type User } from "firebase/auth";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,7 +25,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { LogOut, User as UserIcon, Loader2, Camera } from "lucide-react";
-import { auth, storage } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
+
+// Helper to convert file to Data URI
+const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result as string);
+  reader.onerror = reject;
+  reader.readAsDataURL(file);
+});
 
 export function UserNav() {
   const router = useRouter();
@@ -60,6 +67,14 @@ export function UserNav() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      if (file.size > 1024 * 1024) { // 1MB limit
+        toast({
+          variant: "destructive",
+          title: "Ukuran Gambar Terlalu Besar",
+          description: "Ukuran gambar maksimal adalah 1MB.",
+        });
+        return;
+      }
       setSelectedFile(file);
       setPreviewUrl(URL.createObjectURL(file));
     }
@@ -70,9 +85,7 @@ export function UserNav() {
 
     setIsUploading(true);
     try {
-      const storageRef = ref(storage, `profile-pictures/${user.uid}`);
-      await uploadBytes(storageRef, selectedFile);
-      const photoURL = await getDownloadURL(storageRef);
+      const photoURL = await fileToDataUri(selectedFile);
       await updateProfile(user, { photoURL });
 
       toast({

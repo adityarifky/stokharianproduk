@@ -7,10 +7,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { collection, query, onSnapshot, doc, deleteDoc, updateDoc, writeBatch, setDoc } from "firebase/firestore";
-import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject, ref } from "firebase/storage";
 import { Loader2, Trash2, Plus, RotateCcw, Camera, Pencil } from "lucide-react";
 
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import type { Product } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -77,6 +76,14 @@ const updateStockSchema = z.object({
 });
 
 const categories = ["Creampuff", "Cheesecake", "Millecrepes", "Minuman", "Snackbox", "Lainnya"];
+
+// Helper to convert file to Data URI
+const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result as string);
+  reader.onerror = reject;
+  reader.readAsDataURL(file);
+});
 
 export function ProdukClient() {
   const { toast } = useToast();
@@ -145,6 +152,14 @@ export function ProdukClient() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      if (file.size > 1024 * 1024) { // 1MB limit
+        toast({
+          variant: "destructive",
+          title: "Ukuran Gambar Terlalu Besar",
+          description: "Ukuran gambar maksimal adalah 1MB.",
+        });
+        return;
+      }
       setSelectedFile(file);
       setImagePreview(URL.createObjectURL(file));
       setIsImageMarkedForDeletion(false);
@@ -161,34 +176,24 @@ export function ProdukClient() {
   };
   
   const onAddSubmit = async (values: z.infer<typeof addProductSchema>) => {
-    console.log("1. Memulai proses tambah produk...");
     setIsLoading(true);
     try {
       let imageUrl = "https://placehold.co/600x400.png";
-      console.log("2. Membuat referensi dokumen Firestore...");
-      const newProductRef = doc(collection(db, "products"));
-
+      
       if (selectedFile) {
-        console.log("3. File dipilih. Mengunggah ke Storage di path:", `product-images/${newProductRef.id}`);
-        const imageRef = storageRef(storage, `product-images/${newProductRef.id}`);
-        await uploadBytes(imageRef, selectedFile);
-        console.log("4. Unggah selesai. Mendapatkan URL download...");
-        imageUrl = await getDownloadURL(imageRef);
-        console.log("5. URL download didapatkan:", imageUrl);
-      } else {
-        console.log("3. Tidak ada file dipilih, menggunakan gambar placeholder.");
+        imageUrl = await fileToDataUri(selectedFile);
       }
 
+      const newProductRef = doc(collection(db, "products"));
       const newProductData = {
+        id: newProductRef.id,
         name: values.name,
         category: values.category,
         stock: 0,
         image: imageUrl,
       };
 
-      console.log("6. Menyimpan data produk ke Firestore...");
       await setDoc(newProductRef, newProductData);
-      console.log("7. Simpan ke Firestore berhasil.");
       
       toast({
         title: "Sukses!",
@@ -197,62 +202,30 @@ export function ProdukClient() {
       setIsAddDialogOpen(false);
     } catch (error: any) {
       console.error("Operasi Gagal:", error);
-      let description = `Terjadi kesalahan. Kode error: ${error.code || 'UNKNOWN'}`;
-      if (error.code === 'storage/unauthorized') {
-        description = "Error Izin Storage: Gagal unggah gambar. Periksa 'storage.rules' di Firebase console.";
-      } else if (error.code === 'permission-denied') {
-        description = "Error Izin Firestore: Gagal simpan produk. Periksa 'firestore.rules' di Firebase console.";
-      }
       toast({
         variant: "destructive",
         title: "Gagal Menambahkan Produk",
-        description,
+        description: `Terjadi kesalahan saat menyimpan: ${error.message}`,
       });
     } finally {
-      console.log("8. Menyelesaikan operasi, loading dihentikan.");
       setIsLoading(false);
     }
   };
 
   const onEditSubmit = async (values: z.infer<typeof editProductSchema>) => {
     if (!productToEdit) return;
-    console.log(`1. Memulai proses edit untuk produk ID: ${productToEdit.id}`);
     setIsLoading(true);
     try {
       const productRef = doc(db, "products", productToEdit.id);
       const updates: { name: string; image?: string } = { name: values.name };
 
       if (selectedFile) {
-        console.log("2. File baru dipilih. Mengunggah ke Storage...");
-        const imageFileRef = storageRef(storage, `product-images/${productToEdit.id}`);
-        await uploadBytes(imageFileRef, selectedFile);
-        console.log("3. Unggah selesai. Mendapatkan URL download...");
-        updates.image = await getDownloadURL(imageFileRef);
-        console.log("4. URL download didapatkan:", updates.image);
+        updates.image = await fileToDataUri(selectedFile);
       } else if (isImageMarkedForDeletion) {
-        console.log("2. Gambar ditandai untuk dihapus.");
         updates.image = "https://placehold.co/600x400.png";
-        if (productToEdit.image && !productToEdit.image.includes('placehold.co')) {
-            try {
-                console.log("3. Menghapus gambar lama dari Storage...");
-                const oldImageRef = ref(storage, productToEdit.image);
-                await deleteObject(oldImageRef);
-                console.log("4. Gambar lama berhasil dihapus.");
-            } catch (storageError: any) {
-                if (storageError.code !== 'storage/object-not-found') {
-                    console.error("Gagal menghapus gambar lama:", storageError);
-                } else {
-                    console.log("4. Gambar lama tidak ditemukan di storage, melanjutkan.");
-                }
-            }
-        }
-      } else {
-        console.log("2. Tidak ada perubahan gambar.");
       }
       
-      console.log("5. Mengupdate dokumen di Firestore...");
       await updateDoc(productRef, updates);
-      console.log("6. Update Firestore berhasil.");
       
       toast({
         title: "Sukses!",
@@ -262,19 +235,12 @@ export function ProdukClient() {
     } catch (error: any)
     {
       console.error("Operasi Edit Gagal:", error);
-      let description = `Terjadi kesalahan. Kode error: ${error.code || 'UNKNOWN'}`;
-      if (error.code === 'storage/unauthorized') {
-        description = "Error Izin Storage: Gagal unggah gambar. Periksa 'storage.rules' di Firebase console.";
-      } else if (error.code === 'permission-denied') {
-        description = "Error Izin Firestore: Gagal simpan perubahan. Periksa 'firestore.rules' di Firebase console.";
-      }
       toast({
         variant: "destructive",
         title: "Gagal Mengupdate Produk",
-        description,
+        description: `Terjadi kesalahan saat menyimpan: ${error.message}`,
       });
     } finally {
-      console.log("7. Menyelesaikan operasi edit, loading dihentikan.");
       setIsLoading(false);
     }
   };
@@ -296,9 +262,7 @@ export function ProdukClient() {
         toast({
             variant: "destructive",
             title: "Gagal Mengupdate Stok",
-            description: error.code === 'permission-denied'
-              ? "Error Izin Firestore: Gagal update stok. Periksa 'firestore.rules' di Firebase console."
-              : `Terjadi kesalahan. Kode error: ${error.code || 'UNKNOWN'}`
+            description: `Terjadi kesalahan saat menyimpan: ${error.message}`,
         });
     } finally {
         setIsLoading(false);
@@ -324,9 +288,7 @@ export function ProdukClient() {
       toast({
         variant: "destructive",
         title: "Gagal Mereset Stok",
-        description: error.code === 'permission-denied'
-          ? "Error Izin Firestore: Gagal reset stok. Periksa 'firestore.rules' di Firebase console."
-          : `Terjadi kesalahan. Kode error: ${error.code || 'UNKNOWN'}`
+        description: `Terjadi kesalahan saat menyimpan: ${error.message}`,
       });
     } finally {
       setIsResetDialogOpen(false);
@@ -351,41 +313,18 @@ export function ProdukClient() {
   const handleDeleteProduct = async () => {
     if (!productToDelete) return;
 
-    const product = products.find(p => p.id === productToDelete);
-
     try {
       await deleteDoc(doc(db, "products", productToDelete));
-
-      if (product?.image && !product.image.includes('placehold.co')) {
-          try {
-              const imageFileRef = ref(storage, product.image);
-              await deleteObject(imageFileRef);
-          } catch (storageError: any) {
-              if (storageError.code !== 'storage/object-not-found') {
-                  console.error("Could not delete product image from storage:", storageError);
-                   if (storageError.code === 'storage/unauthorized') {
-                     throw storageError; 
-                   }
-              }
-          }
-      }
-      
       toast({
         title: "Sukses!",
         description: "Produk telah berhasil dihapus."
       });
     } catch (error: any) {
       console.error("Error deleting product: ", error);
-      let description = `Terjadi kesalahan. Kode error: ${error.code || 'UNKNOWN'}`;
-      if (error.code === 'storage/unauthorized') {
-        description = "Error Izin Storage: Gagal hapus gambar. Periksa 'storage.rules' di Firebase console.";
-      } else if (error.code === 'permission-denied') {
-        description = "Error Izin Firestore: Gagal hapus produk. Periksa 'firestore.rules' di Firebase console.";
-      }
       toast({
         variant: "destructive",
         title: "Gagal Menghapus Produk",
-        description,
+        description: `Terjadi kesalahan saat menghapus: ${error.message}`,
       });
     } finally {
       setIsDeleteDialogOpen(false);
