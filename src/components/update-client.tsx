@@ -18,6 +18,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Minus, Plus, Loader2 } from "lucide-react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,12 +30,15 @@ const updateStockSchema = z.object({
 });
 type UpdateStockForm = z.infer<typeof updateStockSchema>;
 
+const categories = ["Semua", "Creampuff", "Cheesecake", "Millecrepes", "Minuman", "Snackbox", "Lainnya"];
+
 export function UpdateClient() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [isUpdateStockDialogOpen, setIsUpdateStockDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [updateAction, setUpdateAction] = useState<"add" | "subtract">("add");
+  const [selectedCategory, setSelectedCategory] = useState("Semua");
   const { toast } = useToast();
 
   const {
@@ -53,7 +57,7 @@ export function UpdateClient() {
       querySnapshot.forEach((doc) => {
         productData.push({ id: doc.id, ...doc.data() } as Product);
       });
-      setProducts(productData);
+      setProducts(productData.sort((a, b) => a.name.localeCompare(b.name)));
       setLoading(false);
     }, (error) => {
       console.error("Error fetching products: ", error);
@@ -120,34 +124,56 @@ export function UpdateClient() {
     );
   }
 
+  const filteredProducts = products.filter(product => 
+    selectedCategory === "Semua" || product.category === selectedCategory
+  );
+
   return (
     <>
       <p className="text-muted-foreground -mt-2 md:-mt-4 mb-4">Catat semua perubahan produk secara realtime.</p>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {products.map((product) => (
-          <Card key={product.id} className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
-            <CardHeader>
-              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg">
-                <Image src={product.image} alt={product.name} fill className="object-cover" data-ai-hint="pastry dreampuff"/>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <CardTitle className="text-lg">{product.name}</CardTitle>
-              <p className="text-muted-foreground">Stok saat ini: <span className="font-bold text-foreground">{product.stock}</span></p>
-            </CardContent>
-            <CardFooter className="flex justify-between gap-2">
-              <Button variant="outline" className="w-full" onClick={() => openUpdateDialog(product, "subtract")}>
-                <Minus className="mr-2 h-4 w-4" />
-                Kurangi
-              </Button>
-              <Button className="w-full" onClick={() => openUpdateDialog(product, "add")}>
-                <Plus className="mr-2 h-4 w-4" />
-                Tambah
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
+      
+      <div className="w-full overflow-x-auto pb-4">
+        <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
+          <TabsList>
+            {categories.map((category) => (
+              <TabsTrigger key={category} value={category}>{category}</TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </div>
+
+      {filteredProducts.length > 0 ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {filteredProducts.map((product) => (
+            <Card key={product.id} className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
+              <CardHeader>
+                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg">
+                  <Image src={product.image} alt={product.name} fill className="object-cover" data-ai-hint="pastry dreampuff"/>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <CardTitle className="text-lg">{product.name}</CardTitle>
+                <p className="text-muted-foreground">Stok saat ini: <span className="font-bold text-foreground">{product.stock}</span></p>
+              </CardContent>
+              <CardFooter className="flex justify-between gap-2">
+                <Button variant="outline" className="w-full" onClick={() => openUpdateDialog(product, "subtract")}>
+                  <Minus className="mr-2 h-4 w-4" />
+                  Kurangi
+                </Button>
+                <Button className="w-full" onClick={() => openUpdateDialog(product, "add")}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Tambah
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center text-center h-64 border-2 border-dashed rounded-lg">
+          <p className="text-lg font-semibold">Tidak Ada Produk</p>
+          <p className="text-muted-foreground">Tidak ada produk yang ditemukan dalam kategori '{selectedCategory}'.</p>
+        </div>
+      )}
 
       <Dialog open={isUpdateStockDialogOpen} onOpenChange={setIsUpdateStockDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
