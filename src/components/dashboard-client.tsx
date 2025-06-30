@@ -12,8 +12,6 @@ import { Minus, Plus, Package, Boxes, ShieldCheck, AlertTriangle, XCircle, Trend
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { collection, getDocs, doc, runTransaction, writeBatch } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 
 const seedProducts: Omit<Product, "id">[] = [
@@ -44,102 +42,57 @@ export function DashboardClient() {
   } = useForm<UpdateStockForm>({ resolver: zodResolver(updateStockSchema) });
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true);
-      try {
-        const productsCollection = collection(db, "products");
-        const productSnapshot = await getDocs(productsCollection);
-        
-        if (productSnapshot.empty) {
-          const batch = writeBatch(db);
-          seedProducts.forEach((productData) => {
-            const docRef = doc(collection(db, "products"));
-            batch.set(docRef, productData);
-          });
-          await batch.commit();
-          const seededSnapshot = await getDocs(productsCollection);
-          const productsList = seededSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
-          setProducts(productsList);
-        } else {
-          const productsList = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
-          setProducts(productsList);
-        }
-      } catch (error) {
-        console.error("Error fetching products: ", error);
-        toast({
-          variant: "destructive",
-          title: "Gagal memuat data",
-          description: "Tidak dapat mengambil data produk dari server.",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProducts();
+    setLoading(true);
+    // Menggunakan data lokal untuk debugging, bukan Firestore
+    const initialProducts: Product[] = seedProducts.map((p, index) => ({
+      ...p,
+      id: `product-${index + 1}`,
+    }));
+    // Simulasi penundaan jaringan
+    setTimeout(() => {
+      setProducts(initialProducts);
+      setLoading(false);
+    }, 500);
   }, []);
 
   const openUpdateDialog = (product: Product, action: "add" | "subtract") => {
     setSelectedProduct(product);
     setUpdateAction(action);
+    resetUpdate({ amount: 1 });
     setIsUpdateStockDialogOpen(true);
   };
 
-  const handleUpdateStock: SubmitHandler<UpdateStockForm> = async (data) => {
+  const handleUpdateStock: SubmitHandler<UpdateStockForm> = (data) => {
     if (!selectedProduct) return;
 
-    const productRef = doc(db, "products", selectedProduct.id);
     const amount = data.amount;
 
-    const originalProducts = [...products];
-    const newProducts = products.map(p => {
-      if (p.id === selectedProduct.id) {
-        const newStock = updateAction === 'add' ? p.stock + amount : p.stock - amount;
-        return { ...p, stock: Math.max(0, newStock) };
-      }
-      return p;
-    });
-    setProducts(newProducts);
-
-    try {
-      await runTransaction(db, async (transaction) => {
-        const productDoc = await transaction.get(productRef);
-        if (!productDoc.exists()) {
-          throw new Error("Produk tidak ditemukan!");
-        }
-        
-        const currentStock = productDoc.data().stock;
-        let newStock;
-
-        if (updateAction === 'add') {
-          newStock = currentStock + amount;
-        } else {
-          newStock = currentStock - amount;
+    setProducts(prevProducts =>
+      prevProducts.map(p => {
+        if (p.id === selectedProduct.id) {
+          const newStock = updateAction === 'add' ? p.stock + amount : p.stock - amount;
           if (newStock < 0) {
-            throw new Error("Stok tidak boleh kurang dari nol.");
+            toast({
+              variant: "destructive",
+              title: "Gagal Memperbarui Stok",
+              description: "Stok tidak boleh kurang dari nol.",
+            });
+            return p;
           }
+          return { ...p, stock: newStock };
         }
-        transaction.update(productRef, { stock: newStock });
-      });
-      
-      toast({
-        title: "Sukses",
-        description: `Stok untuk ${selectedProduct.name} telah diperbarui.`,
-      });
+        return p;
+      })
+    );
+    
+    toast({
+      title: "Sukses",
+      description: `Stok untuk ${selectedProduct.name} telah diperbarui (lokal).`,
+    });
 
-    } catch (error: any) {
-      setProducts(originalProducts);
-      console.error("Update failed: ", error);
-      toast({
-        variant: "destructive",
-        title: "Gagal Memperbarui Stok",
-        description: error.message || "Terjadi kesalahan. Perubahan dibatalkan.",
-      });
-    } finally {
-      resetUpdate();
-      setIsUpdateStockDialogOpen(false);
-      setSelectedProduct(null);
-    }
+    resetUpdate();
+    setIsUpdateStockDialogOpen(false);
+    setSelectedProduct(null);
   };
 
   const totalProducts = products.length;
