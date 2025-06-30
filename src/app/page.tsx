@@ -8,8 +8,8 @@ export default function LoginPage() {
       <Image
         src="/Logo%20Dreampuff.png"
         alt="Dreampuff Logo"
-        width={150}
-        height={150}
+        width={200}
+        height={200}
         className="mb-6"
         priority
         data-ai-hint="company logo"
