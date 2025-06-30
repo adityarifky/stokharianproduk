@@ -16,7 +16,7 @@ export default function LoginPage() {
       />
       <Card className="w-full max-w-sm mx-auto">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold tracking-tight font-headline">
+          <CardTitle className="text-2xl font-bold tracking-tight font-headline text-primary">
             Stok Produk Harian
           </CardTitle>
           <CardDescription>
