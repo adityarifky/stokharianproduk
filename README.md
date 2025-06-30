@@ -1,5 +1,10 @@
-# Firebase Studio
+# Stock Produk Dreampuff
 
-This is a NextJS starter in Firebase Studio.
+This is a Next.js application for managing daily food product stock for Dreampuff.
 
-To get started, take a look at src/app/page.tsx.
+## Features
+
+- User Login
+- Informational dashboard with stock summary
+- Add new products to stock
+- Update stock quantities for existing products
