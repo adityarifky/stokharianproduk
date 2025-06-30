@@ -1,9 +1,19 @@
+import Image from "next/image";
 import { LoginForm } from "@/components/login-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function LoginPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+      <Image
+        src="/logo-dreampuff.png"
+        alt="Dreampuff Logo"
+        width={150}
+        height={150}
+        className="mb-6"
+        priority
+        data-ai-hint="company logo"
+      />
       <Card className="w-full max-w-sm mx-auto">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold tracking-tight">
