@@ -8,7 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PlusCircle, Minus, Plus } from "lucide-react";
+import { PlusCircle, Minus, Plus, Package, Boxes, ShieldCheck, AlertTriangle, XCircle, TrendingUp } from "lucide-react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -85,6 +85,16 @@ export function DashboardClient() {
     setIsUpdateStockDialogOpen(false);
     setSelectedProduct(null);
   };
+
+  const totalProducts = products.length;
+  const totalStock = products.reduce((sum, product) => sum + product.stock, 0);
+  const sufficientStockProducts = products.filter(p => p.stock > 10).length;
+  const lowStockProducts = products.filter(p => p.stock > 0 && p.stock <= 10).length;
+  const outOfStockProducts = products.filter(p => p.stock === 0).length;
+  const highestStockProduct = products.reduce(
+    (max, p) => (p.stock > max.stock ? p : max),
+    products.length > 0 ? products[0] : { name: "N/A", stock: 0 }
+  );
   
   return (
     <>
@@ -123,6 +133,72 @@ export function DashboardClient() {
         </Dialog>
       </div>
 
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mb-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Produk</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalProducts}</div>
+            <p className="text-xs text-muted-foreground">jenis produk berbeda</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Stok</CardTitle>
+            <Boxes className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalStock}</div>
+            <p className="text-xs text-muted-foreground">item di semua produk</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Stok Cukup</CardTitle>
+            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{sufficientStockProducts}</div>
+            <p className="text-xs text-muted-foreground">produk dengan stok &gt; 10</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Stok Sedikit</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{lowStockProducts}</div>
+            <p className="text-xs text-muted-foreground">produk akan segera habis</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Stok Habis</CardTitle>
+            <XCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{outOfStockProducts}</div>
+            <p className="text-xs text-muted-foreground">produk tidak tersedia</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Stok Tertinggi</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{highestStockProduct.stock}</div>
+            <p className="text-xs text-muted-foreground" title={highestStockProduct.name}>
+              {highestStockProduct.name.length > 20 ? `${highestStockProduct.name.substring(0, 18)}...` : highestStockProduct.name}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <h2 className="text-xl font-bold tracking-tight mb-4">Detail Produk</h2>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {products.map((product) => (
           <Card key={product.id}>
