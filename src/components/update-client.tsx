@@ -129,10 +129,10 @@ export function UpdateClient() {
   );
 
   return (
-    <>
-      <p className="text-muted-foreground -mt-2 md:-mt-4 mb-4">Catat semua perubahan produk secara realtime.</p>
+    <div className="flex h-full w-full flex-col gap-6">
+      <p className="text-muted-foreground">Catat semua perubahan produk secara realtime.</p>
       
-      <div className="w-full overflow-x-auto pb-4">
+      <div className="w-full overflow-x-auto">
         <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
           <TabsList>
             {categories.map((category) => (
@@ -143,19 +143,19 @@ export function UpdateClient() {
       </div>
 
       {filteredProducts.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {filteredProducts.map((product) => (
-            <Card key={product.id} className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
-              <CardHeader>
-                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg">
-                  <Image src={product.image} alt={product.name} fill className="object-cover" data-ai-hint="pastry dreampuff"/>
+            <Card key={product.id} className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105 flex flex-col">
+              <CardHeader className="p-4">
+                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-md">
+                  <Image src={product.image || 'https://placehold.co/600x400.png'} alt={product.name} fill className="object-cover" data-ai-hint="pastry dreampuff"/>
                 </div>
               </CardHeader>
-              <CardContent>
-                <CardTitle className="text-lg">{product.name}</CardTitle>
-                <p className="text-muted-foreground">Stok saat ini: <span className="font-bold text-foreground">{product.stock}</span></p>
+              <CardContent className="flex-1 px-4 pb-4">
+                <CardTitle className="text-lg mb-1">{product.name}</CardTitle>
+                <p className="text-sm text-muted-foreground">Stok saat ini: <span className="font-bold text-foreground">{product.stock}</span></p>
               </CardContent>
-              <CardFooter className="flex justify-between gap-2">
+              <CardFooter className="flex justify-between gap-2 px-4 pb-4 pt-0">
                 <Button variant="outline" className="w-full" onClick={() => openUpdateDialog(product, "subtract")}>
                   <Minus className="mr-2 h-4 w-4" />
                   Kurangi
@@ -195,6 +195,6 @@ export function UpdateClient() {
           </form>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }
