@@ -11,6 +11,7 @@ import {
   Loader2,
   FilePenLine,
   Users,
+  Package,
 } from "lucide-react";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -41,6 +42,7 @@ export default function DashboardLayout({
 
   const menuItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/dashboard/produk", label: "Produk", icon: Package },
     { href: "/dashboard/update", label: "Update Produk", icon: FilePenLine },
     { href: "#", label: "Riwayat", icon: History },
     { href: "#", label: "Laporan", icon: BarChart },
@@ -82,7 +84,7 @@ export default function DashboardLayout({
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background">
-        <div className="grid h-16 grid-cols-5 items-center">
+        <div className="grid h-16 grid-cols-6 items-center">
           {menuItems.map((item) => (
             <Link
               key={item.label}
