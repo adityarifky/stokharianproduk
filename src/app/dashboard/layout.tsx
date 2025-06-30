@@ -1,6 +1,7 @@
 'use client';
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import {
@@ -9,7 +10,6 @@ import {
   LayoutDashboard,
   Loader2,
   Package,
-  Package2,
   Users,
 } from "lucide-react";
 import { onAuthStateChanged } from "firebase/auth";
@@ -59,8 +59,14 @@ export default function DashboardLayout({
     <div className="flex min-h-screen w-full flex-col">
       <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-4 border-b bg-background px-4 md:px-6">
         <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold">
-          <Package2 className="h-6 w-6" />
-          <span>Dreampuff</span>
+          <Image
+            src="/Logo%20Dreampuff.png"
+            alt="Dreampuff Logo"
+            width={140}
+            height={32}
+            priority
+            data-ai-hint="company logo"
+          />
         </Link>
         <UserNav />
       </header>
