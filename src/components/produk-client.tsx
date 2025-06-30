@@ -93,6 +93,7 @@ export function ProdukClient() {
     resolver: zodResolver(addProductSchema),
     defaultValues: {
       name: "",
+      category: undefined,
     },
   });
 
