@@ -8,7 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Minus, Plus, Package, Boxes, ShieldCheck, AlertTriangle, XCircle, TrendingUp, Loader2 } from "lucide-react";
+import { Minus, Plus, Loader2, Cookie, CakeSlice, Layers, CupSoda, Box, MoreHorizontal } from "lucide-react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -94,16 +94,6 @@ export function DashboardClient() {
     setIsUpdateStockDialogOpen(false);
     setSelectedProduct(null);
   };
-
-  const totalProducts = products.length;
-  const totalStock = products.reduce((sum, product) => sum + product.stock, 0);
-  const sufficientStockProducts = products.filter(p => p.stock > 10).length;
-  const lowStockProducts = products.filter(p => p.stock > 0 && p.stock <= 10).length;
-  const outOfStockProducts = products.filter(p => p.stock === 0).length;
-  const highestStockProduct = products.reduce(
-    (max, p) => (p.stock > max.stock ? p : max),
-    products.length > 0 ? products[0] : { name: "N/A", stock: 0 }
-  );
   
   if (loading) {
     return (
@@ -118,64 +108,62 @@ export function DashboardClient() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Produk</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Creampuff</CardTitle>
+            <Cookie className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalProducts}</div>
-            <p className="text-xs text-muted-foreground">jenis produk berbeda</p>
+            <div className="text-2xl font-bold">0</div>
+            <p className="text-xs text-muted-foreground">Produk</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Stok</CardTitle>
-            <Boxes className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Cheesecake</CardTitle>
+            <CakeSlice className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalStock}</div>
-            <p className="text-xs text-muted-foreground">item di semua produk</p>
+            <div className="text-2xl font-bold">0</div>
+            <p className="text-xs text-muted-foreground">Produk</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Stok Cukup</CardTitle>
-            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Millecrepes</CardTitle>
+            <Layers className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{sufficientStockProducts}</div>
-            <p className="text-xs text-muted-foreground">produk dengan stok &gt; 10</p>
+            <div className="text-2xl font-bold">0</div>
+            <p className="text-xs text-muted-foreground">Produk</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Stok Sedikit</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Minuman</CardTitle>
+            <CupSoda className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{lowStockProducts}</div>
-            <p className="text-xs text-muted-foreground">produk akan segera habis</p>
+            <div className="text-2xl font-bold">0</div>
+            <p className="text-xs text-muted-foreground">Produk</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Stok Habis</CardTitle>
-            <XCircle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Snackbox</CardTitle>
+            <Box className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{outOfStockProducts}</div>
-            <p className="text-xs text-muted-foreground">produk tidak tersedia</p>
+            <div className="text-2xl font-bold">0</div>
+            <p className="text-xs text-muted-foreground">Produk</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Stok Tertinggi</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Lainnya</CardTitle>
+            <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{highestStockProduct.stock}</div>
-            <p className="text-xs text-muted-foreground" title={highestStockProduct.name}>
-              {highestStockProduct.name.length > 20 ? `${highestStockProduct.name.substring(0, 18)}...` : highestStockProduct.name}
-            </p>
+            <div className="text-2xl font-bold">0</div>
+            <p className="text-xs text-muted-foreground">Produk</p>
           </CardContent>
         </Card>
       </div>
