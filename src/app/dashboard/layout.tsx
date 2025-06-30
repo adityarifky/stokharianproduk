@@ -1,17 +1,20 @@
 'use client';
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   BarChart,
   History,
   LayoutDashboard,
+  Loader2,
   Package,
   Package2,
   Users,
 } from "lucide-react";
+import { onAuthStateChanged } from "firebase/auth";
 
+import { auth } from "@/lib/firebase";
 import { UserNav } from "@/components/user-nav";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +24,19 @@ export default function DashboardLayout({
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        router.push("/");
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [router]);
 
   const menuItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -29,6 +45,14 @@ export default function DashboardLayout({
     { href: "#", label: "Laporan", icon: BarChart },
     { href: "#", label: "Pengguna", icon: Users },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen w-full flex-col">
