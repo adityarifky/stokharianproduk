@@ -20,7 +20,7 @@ export default function LoginPage() {
             Stok Produk Harian
           </CardTitle>
           <CardDescription>
-            Selamat datang kembali! Silakan masuk ke akun Anda.
+            Selamat datang brader! Monggo bisa masuk ke halaman kerja.
           </CardDescription>
         </CardHeader>
         <CardContent>
