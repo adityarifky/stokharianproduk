@@ -153,25 +153,31 @@ export function ProdukClient() {
 
   useEffect(() => {
     setLoadingProducts(true);
+    console.log("Setting up Firestore listener...");
     const q = query(collection(db, "products"));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      console.log("Firestore data received.");
       const productsData: Product[] = [];
       querySnapshot.forEach((doc) => {
         productsData.push({ id: doc.id, ...doc.data() } as Product);
       });
       setProducts(productsData.sort((a, b) => a.name.localeCompare(b.name)));
       setLoadingProducts(false);
+      console.log("Products state updated.");
     }, (error) => {
-      console.error("Error fetching products:", error);
+      console.error("Firestore listener error:", error);
       toast({
         variant: "destructive",
         title: "Gagal memuat data",
-        description: "Tidak dapat mengambil daftar produk dari database.",
+        description: `Tidak dapat mengambil daftar produk. Error: ${error.code}. Pastikan aturan Firestore sudah benar.`,
       });
       setLoadingProducts(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      console.log("Cleaning up Firestore listener.");
+      unsubscribe();
+    }
   }, [toast]);
   
   async function getCroppedImg(
@@ -209,18 +215,28 @@ export function ProdukClient() {
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+      if (file.size > 1 * 1024 * 1024) { // 1MB limit for Data URI
         toast({
           variant: "destructive",
           title: "Ukuran Gambar Terlalu Besar",
-          description: "Ukuran gambar maksimal adalah 2MB.",
+          description: "Ukuran gambar maksimal adalah 1MB.",
         });
         return;
       }
       setCrop(undefined); // Clear crop when new image is selected
-      const dataUri = await fileToDataUri(file);
-      setSourceImage(dataUri);
-      setIsImageMarkedForDeletion(false);
+      try {
+        const dataUri = await fileToDataUri(file);
+        setSourceImage(dataUri);
+        setIsImageMarkedForDeletion(false);
+        console.log("File converted to Data URI successfully.");
+      } catch (error) {
+        console.error("Error converting file to Data URI:", error);
+        toast({
+          variant: "destructive",
+          title: "Gagal Membaca File",
+          description: "Tidak dapat memproses file gambar yang dipilih.",
+        });
+      }
     }
   };
 
@@ -241,13 +257,20 @@ export function ProdukClient() {
 
   const onAddSubmit = async (values: z.infer<typeof addProductSchema>) => {
     setIsLoading(true);
+    console.log("Add Product submission started...");
     try {
       let imageUrl = "https://placehold.co/600x400.png";
       
-      if (completedCrop && imgRef.current) {
-        imageUrl = await getCroppedImg(imgRef.current, completedCrop);
+      if (sourceImage && !isImageMarkedForDeletion) {
+        if (completedCrop && imgRef.current) {
+          console.log("Cropping image...");
+          imageUrl = await getCroppedImg(imgRef.current, completedCrop);
+        } else {
+          imageUrl = sourceImage;
+        }
       }
 
+      console.log("Preparing new product data...");
       const newProductRef = doc(collection(db, "products"));
       const newProductData = {
         id: newProductRef.id,
@@ -257,7 +280,9 @@ export function ProdukClient() {
         image: imageUrl,
       };
 
+      console.log("Saving new product to Firestore...");
       await setDoc(newProductRef, newProductData);
+      console.log("New product saved successfully.");
       
       toast({
         title: "Sukses!",
@@ -265,31 +290,42 @@ export function ProdukClient() {
       });
       setIsAddDialogOpen(false);
     } catch (error: any) {
-      console.error("Operasi Gagal:", error);
+      console.error("Add product operation failed:", error);
       toast({
         variant: "destructive",
         title: "Gagal Menambahkan Produk",
-        description: `Terjadi kesalahan saat menyimpan: ${error.message}`,
+        description: `Terjadi kesalahan saat menyimpan: ${error.code || error.message}. Cek aturan Firestore.`,
       });
     } finally {
       setIsLoading(false);
+      console.log("Add Product submission finished.");
     }
   };
 
   const onEditSubmit = async (values: z.infer<typeof editProductSchema>) => {
     if (!productToEdit) return;
     setIsLoading(true);
+    console.log(`Edit Product submission started for ${productToEdit.id}...`);
     try {
       const productRef = doc(db, "products", productToEdit.id);
       const updates: { name: string; image?: string } = { name: values.name };
 
-      if (completedCrop && imgRef.current) {
-        updates.image = await getCroppedImg(imgRef.current, completedCrop);
+      if (sourceImage && !isImageMarkedForDeletion) {
+        if (completedCrop && imgRef.current) {
+          console.log("Cropping image for edit...");
+          updates.image = await getCroppedImg(imgRef.current, completedCrop);
+        } else if (sourceImage !== productToEdit.image) {
+          // If a new image was selected but not cropped
+          updates.image = sourceImage;
+        }
       } else if (isImageMarkedForDeletion) {
+        console.log("Marking image for deletion...");
         updates.image = "https://placehold.co/600x400.png";
       }
       
+      console.log("Updating product in Firestore...");
       await updateDoc(productRef, updates);
+      console.log("Product updated successfully.");
       
       toast({
         title: "Sukses!",
@@ -298,14 +334,15 @@ export function ProdukClient() {
       setIsEditDialogOpen(false);
     } catch (error: any)
     {
-      console.error("Operasi Edit Gagal:", error);
+      console.error("Edit product operation failed:", error);
       toast({
         variant: "destructive",
         title: "Gagal Mengupdate Produk",
-        description: `Terjadi kesalahan saat menyimpan: ${error.message}`,
+        description: `Terjadi kesalahan saat menyimpan: ${error.code || error.message}. Cek aturan Firestore.`,
       });
     } finally {
       setIsLoading(false);
+      console.log("Edit Product submission finished.");
     }
   };
 
@@ -326,7 +363,7 @@ export function ProdukClient() {
         toast({
             variant: "destructive",
             title: "Gagal Mengupdate Stok",
-            description: `Terjadi kesalahan saat menyimpan: ${error.message}`,
+            description: `Terjadi kesalahan saat menyimpan: ${error.code || error.message}`,
         });
     } finally {
         setIsLoading(false);
@@ -352,7 +389,7 @@ export function ProdukClient() {
       toast({
         variant: "destructive",
         title: "Gagal Mereset Stok",
-        description: `Terjadi kesalahan saat menyimpan: ${error.message}`,
+        description: `Terjadi kesalahan saat menyimpan: ${error.code || error.message}`,
       });
     } finally {
       setIsResetDialogOpen(false);
@@ -378,6 +415,7 @@ export function ProdukClient() {
   const handleDeleteProduct = async () => {
     if (!productToDelete) return;
 
+    setIsLoading(true);
     try {
       await deleteDoc(doc(db, "products", productToDelete));
       toast({
@@ -389,11 +427,12 @@ export function ProdukClient() {
       toast({
         variant: "destructive",
         title: "Gagal Menghapus Produk",
-        description: `Terjadi kesalahan saat menghapus: ${error.message}`,
+        description: `Terjadi kesalahan saat menghapus: ${error.code || error.message}`,
       });
     } finally {
       setIsDeleteDialogOpen(false);
       setProductToDelete(null);
+      setIsLoading(false);
     }
   };
 
@@ -540,6 +579,7 @@ export function ProdukClient() {
                           variant="destructive"
                           size="icon"
                           onClick={() => openDeleteDialog(product.id)}
+                          disabled={isLoading}
                         >
                           <Trash2 className="h-4 w-4" />
                           <span className="sr-only">Hapus</span>
@@ -567,83 +607,85 @@ export function ProdukClient() {
           </DialogHeader>
           <Form {...addForm}>
             <form onSubmit={addForm.handleSubmit(onAddSubmit)} className="space-y-4 py-4">
-              <div className="space-y-2 flex flex-col items-center">
-                <Label>Gambar Produk</Label>
-                {sourceImage ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <ReactCrop
-                      crop={crop}
-                      onChange={(_, percentCrop) => setCrop(percentCrop)}
-                      onComplete={(c) => setCompletedCrop(c)}
-                      aspect={aspect}
-                      minWidth={100}
-                    >
-                      <Image
-                        ref={imgRef}
-                        alt="Crop preview"
-                        src={sourceImage}
-                        onLoad={onImageLoad}
-                        width={400}
-                        height={400}
-                        style={{ maxHeight: '70vh' }}
-                      />
-                    </ReactCrop>
-                    <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isLoading}>
-                      <Camera className="mr-2 h-4 w-4" /> Ganti Gambar
+              <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-4">
+                <div className="space-y-2 flex flex-col items-center">
+                  <Label>Gambar Produk</Label>
+                  {sourceImage ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <ReactCrop
+                        crop={crop}
+                        onChange={(_, percentCrop) => setCrop(percentCrop)}
+                        onComplete={(c) => setCompletedCrop(c)}
+                        aspect={aspect}
+                        minWidth={100}
+                      >
+                        <Image
+                          ref={imgRef}
+                          alt="Crop preview"
+                          src={sourceImage}
+                          onLoad={onImageLoad}
+                          width={400}
+                          height={400}
+                          style={{ maxHeight: '70vh' }}
+                        />
+                      </ReactCrop>
+                      <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isLoading}>
+                        <Camera className="mr-2 h-4 w-4" /> Ganti Gambar
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isLoading}>
+                      <Camera className="mr-2 h-4 w-4" /> Pilih Gambar
                     </Button>
-                  </div>
-                ) : (
-                  <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isLoading}>
-                    <Camera className="mr-2 h-4 w-4" /> Pilih Gambar
-                  </Button>
-                )}
-                <Input 
-                  ref={fileInputRef}
-                  type="file"
-                  className="hidden"
-                  accept="image/png, image/jpeg"
-                  onChange={handleFileChange}
-                  disabled={isLoading}
+                  )}
+                  <Input 
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept="image/png, image/jpeg"
+                    onChange={handleFileChange}
+                    disabled={isLoading}
+                  />
+                </div>
+
+                <FormField
+                  control={addForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nama Produk</FormLabel>
+                      <FormControl>
+                        <Input placeholder="cth. Puff Cokelat" {...field} disabled={isLoading} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={addForm.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Kategori</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={isLoading}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih kategori produk" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {categories.map((cat) => (
+                            <SelectItem key={cat} value={cat}>
+                              {cat}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
               </div>
-
-              <FormField
-                control={addForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nama Produk</FormLabel>
-                    <FormControl>
-                      <Input placeholder="cth. Puff Cokelat" {...field} disabled={isLoading} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={addForm.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Kategori</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={isLoading}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih kategori produk" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {categories.map((cat) => (
-                          <SelectItem key={cat} value={cat}>
-                            {cat}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isLoading}>Batal</Button>
                 <Button type="submit" disabled={isLoading}>
@@ -675,73 +717,75 @@ export function ProdukClient() {
           </DialogHeader>
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4 py-4">
-              <div className="space-y-2 flex flex-col items-center">
-                <Label>Gambar Produk</Label>
-                {sourceImage && !isImageMarkedForDeletion ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <ReactCrop
-                      crop={crop}
-                      onChange={(_, percentCrop) => setCrop(percentCrop)}
-                      onComplete={(c) => setCompletedCrop(c)}
-                      aspect={aspect}
-                      minWidth={100}
-                    >
-                      <Image
-                        ref={imgRef}
-                        alt="Crop preview"
-                        src={sourceImage}
-                        onLoad={onImageLoad}
-                        width={400}
-                        height={400}
-                        style={{ maxHeight: '70vh' }}
-                        crossOrigin="anonymous" 
-                      />
-                    </ReactCrop>
+              <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-4">
+                <div className="space-y-2 flex flex-col items-center">
+                  <Label>Gambar Produk</Label>
+                  {sourceImage && !isImageMarkedForDeletion ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <ReactCrop
+                        crop={crop}
+                        onChange={(_, percentCrop) => setCrop(percentCrop)}
+                        onComplete={(c) => setCompletedCrop(c)}
+                        aspect={aspect}
+                        minWidth={100}
+                      >
+                        <Image
+                          ref={imgRef}
+                          alt="Crop preview"
+                          src={sourceImage}
+                          onLoad={onImageLoad}
+                          width={400}
+                          height={400}
+                          style={{ maxHeight: '70vh' }}
+                          crossOrigin="anonymous" 
+                        />
+                      </ReactCrop>
+                    </div>
+                  ) : (
+                    <div className="w-32 h-32 rounded-lg border border-dashed flex items-center justify-center bg-muted/40">
+                      <span className="text-xs text-muted-foreground text-center p-2">Tidak ada gambar</span>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isLoading}>
+                        <Camera className="mr-2 h-4 w-4" />
+                        Ubah
+                      </Button>
+                      <Button 
+                        type="button" 
+                        variant="destructive" 
+                        size="sm" 
+                        onClick={handleRemoveImage} 
+                        disabled={isLoading || (!sourceImage || isImageMarkedForDeletion)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Hapus
+                      </Button>
                   </div>
-                ) : (
-                  <div className="w-32 h-32 rounded-lg border border-dashed flex items-center justify-center bg-muted/40">
-                    <span className="text-xs text-muted-foreground text-center p-2">Tidak ada gambar</span>
-                  </div>
-                )}
-                <div className="flex gap-2">
-                    <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isLoading}>
-                      <Camera className="mr-2 h-4 w-4" />
-                      Ubah
-                    </Button>
-                    <Button 
-                      type="button" 
-                      variant="destructive" 
-                      size="sm" 
-                      onClick={handleRemoveImage} 
-                      disabled={isLoading || isImageMarkedForDeletion}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Hapus
-                    </Button>
+                  <Input 
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept="image/png, image/jpeg"
+                    onChange={handleFileChange}
+                    disabled={isLoading}
+                  />
                 </div>
-                <Input 
-                  ref={fileInputRef}
-                  type="file"
-                  className="hidden"
-                  accept="image/png, image/jpeg"
-                  onChange={handleFileChange}
-                  disabled={isLoading}
+
+                <FormField
+                  control={editForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nama Produk</FormLabel>
+                      <FormControl>
+                        <Input placeholder="cth. Puff Cokelat" {...field} disabled={isLoading} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
               </div>
-
-              <FormField
-                control={editForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nama Produk</FormLabel>
-                    <FormControl>
-                      <Input placeholder="cth. Puff Cokelat" {...field} disabled={isLoading} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isLoading}>Batal</Button>
                 <Button type="submit" disabled={isLoading}>
@@ -773,8 +817,9 @@ export function ProdukClient() {
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={handleDeleteProduct}
+              disabled={isLoading}
             >
-              Ya, Hapus
+             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Ya, Hapus"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
