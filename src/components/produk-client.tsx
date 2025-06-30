@@ -5,8 +5,8 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { collection, addDoc, query, onSnapshot, doc, deleteDoc } from "firebase/firestore";
-import { Loader2, Trash2 } from "lucide-react";
+import { collection, addDoc, query, onSnapshot, doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { Loader2, Trash2, Plus } from "lucide-react";
 
 import { db } from "@/lib/firebase";
 import type { Product } from "@/lib/types";
@@ -47,14 +47,27 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 
-const formSchema = z.object({
+const addProductSchema = z.object({
   name: z.string().min(1, { message: "Nama produk harus diisi." }),
   stock: z.coerce.number().int().min(0, { message: "Stok awal minimal 0." }),
   category: z.enum(["Creampuff", "Cheesecake", "Millecrepes", "Minuman", "Snackbox", "Lainnya"], {
     required_error: "Kategori harus dipilih.",
   }),
+});
+
+const updateStockSchema = z.object({
+    productId: z.string({ required_error: "Produk harus dipilih." }).min(1, { message: "Produk harus dipilih." }),
+    stock: z.coerce.number().int().min(0, { message: "Stok minimal 0." }),
 });
 
 const categories = ["Creampuff", "Cheesecake", "Millecrepes", "Minuman", "Snackbox", "Lainnya"];
@@ -66,11 +79,20 @@ export function ProdukClient() {
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const addForm = useForm<z.infer<typeof addProductSchema>>({
+    resolver: zodResolver(addProductSchema),
     defaultValues: {
       name: "",
+      stock: 0,
+    },
+  });
+
+  const updateForm = useForm<z.infer<typeof updateStockSchema>>({
+    resolver: zodResolver(updateStockSchema),
+    defaultValues: {
+      productId: "",
       stock: 0,
     },
   });
@@ -98,7 +120,7 @@ export function ProdukClient() {
     return () => unsubscribe();
   }, [toast]);
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const onAddSubmit = async (values: z.infer<typeof addProductSchema>) => {
     setIsLoading(true);
     try {
       await addDoc(collection(db, "products"), {
@@ -110,7 +132,8 @@ export function ProdukClient() {
         title: "Sukses!",
         description: `Produk "${values.name}" berhasil ditambahkan.`,
       });
-      form.reset({ name: "", stock: 0, category: undefined });
+      addForm.reset({ name: "", stock: 0, category: undefined });
+      setIsAddDialogOpen(false);
     } catch (error) {
       console.error("Error adding product: ", error);
       toast({
@@ -122,6 +145,31 @@ export function ProdukClient() {
       setIsLoading(false);
     }
   };
+
+  const onUpdateStockSubmit = async (values: z.infer<typeof updateStockSchema>) => {
+    setIsLoading(true);
+    try {
+        const productRef = doc(db, "products", values.productId);
+        await updateDoc(productRef, { stock: values.stock });
+
+        const updatedProduct = products.find(p => p.id === values.productId);
+        toast({
+            title: "Sukses!",
+            description: `Stok untuk "${updatedProduct?.name}" berhasil diupdate.`,
+        });
+        updateForm.reset({ productId: "", stock: 0 });
+    } catch (error) {
+        console.error("Error updating stock: ", error);
+        toast({
+            variant: "destructive",
+            title: "Gagal Mengupdate Stok",
+            description: "Terjadi kesalahan saat menyimpan ke database.",
+        });
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
 
   const openDeleteDialog = (id: string) => {
     setProductToDelete(id);
@@ -153,56 +201,30 @@ export function ProdukClient() {
     <div className="grid gap-8">
       <Card>
         <CardHeader>
-          <CardTitle>Tambah Produk Baru</CardTitle>
+          <CardTitle>Update Stok Awal Produk</CardTitle>
           <CardDescription>
-            Gunakan formulir ini untuk menambah jenis produk baru dan memasukkan stok awalnya.
+            Gunakan formulir ini untuk mengatur ulang jumlah stok produk yang sudah ada.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <Form {...updateForm}>
+            <form onSubmit={updateForm.handleSubmit(onUpdateStockSubmit)} className="space-y-6">
               <FormField
-                control={form.control}
-                name="name"
+                control={updateForm.control}
+                name="productId"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Nama Produk</FormLabel>
-                    <FormControl>
-                      <Input placeholder="cth. Puff Cokelat" {...field} disabled={isLoading} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="stock"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Stok Awal</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="cth. 50" {...field} disabled={isLoading} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Kategori</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value} disabled={isLoading}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Pilih kategori produk" />
+                          <SelectValue placeholder="Pilih produk untuk diupdate" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {categories.map((cat) => (
-                          <SelectItem key={cat} value={cat}>
-                            {cat}
+                        {products.map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -211,14 +233,27 @@ export function ProdukClient() {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={updateForm.control}
+                name="stock"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Jumlah Stok Baru</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="cth. 50" {...field} disabled={isLoading} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <Button type="submit" className="w-full sm:w-auto" disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Menyimpan...
+                    Mengupdate...
                   </>
                 ) : (
-                  "Tambah Produk"
+                  "Update Stok"
                 )}
               </Button>
             </form>
@@ -228,8 +263,16 @@ export function ProdukClient() {
       
       <Card>
         <CardHeader>
-          <CardTitle>Daftar Produk</CardTitle>
-          <CardDescription>Kelola semua produk yang terdaftar di dalam stok.</CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Daftar Produk</CardTitle>
+              <CardDescription>Kelola semua produk yang terdaftar di dalam stok.</CardDescription>
+            </div>
+            <Button onClick={() => setIsAddDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Tambah Produk Baru
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {loadingProducts ? (
@@ -269,6 +312,84 @@ export function ProdukClient() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Tambah Produk Baru</DialogTitle>
+            <DialogDescription>
+              Gunakan formulir ini untuk menambah jenis produk baru dan memasukkan stok awalnya.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...addForm}>
+            <form onSubmit={addForm.handleSubmit(onAddSubmit)} className="space-y-6 py-4">
+              <FormField
+                control={addForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nama Produk</FormLabel>
+                    <FormControl>
+                      <Input placeholder="cth. Puff Cokelat" {...field} disabled={isLoading} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={addForm.control}
+                name="stock"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Stok Awal</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="cth. 50" {...field} disabled={isLoading} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={addForm.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kategori</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isLoading}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih kategori produk" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat} value={cat}>
+                            {cat}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isLoading}>Batal</Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Menyimpan...
+                    </>
+                  ) : (
+                    "Tambah Produk"
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
