@@ -77,7 +77,7 @@ export function DashboardClient() {
     };
 
     fetchProducts();
-  }, [toast]);
+  }, []);
 
   const openUpdateDialog = (product: Product, action: "add" | "subtract") => {
     setSelectedProduct(product);
