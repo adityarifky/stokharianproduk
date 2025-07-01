@@ -4,7 +4,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useMemo, type ReactNode } from "react";
 import {
   BarChart,
   History,
@@ -45,8 +45,22 @@ function InnerLayout({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [isSessionDialogOpen, setIsSessionDialogOpen] = useState(false);
-  const { sessionEstablished, setSessionEstablished, setSessionInfo } = useSession();
+  const { sessionEstablished, setSessionEstablished, setSessionInfo, sessionInfo } = useSession();
   const [isSubmittingSession, setIsSubmittingSession] = useState(false);
+  const [motivationalQuote, setMotivationalQuote] = useState("");
+
+  const motivationalQuotes = useMemo(() => [
+      "Mulai kerja dulu ya, biar gak jadi beban tim 🤡💼",
+      "Kerja dulu... biar bisa santai tanpa rasa bersalah 🤭",
+      "Fokus ya, jangan ke-distract notif mantan 🚫",
+      "Skip drama, fokus kerja dulu 🎯",
+      "Kerja pelan-pelan, asal gak ngeluh terus 😆",
+      "Fokus, jangan kasih kendor 💪",
+      "Ketik satu, tarik napas, semangat lagi ✍️😤",
+      "Gas kerja, gas sukses! 💨💼",
+      "Senyumin kerjaan kamu 😬",
+      "Bukan mager time 😤",
+  ], []);
 
   const sessionForm = useForm<z.infer<typeof sessionFormSchema>>({
     resolver: zodResolver(sessionFormSchema),
@@ -56,26 +70,47 @@ function InnerLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (!currentUser) {
-        setSessionEstablished(false);
-        setSessionInfo(null);
         router.push("/");
       } else {
         setUser(currentUser);
-        // We defer opening the dialog until the session context confirms it's not established.
-        // This avoids race conditions on page load.
         setLoading(false);
       }
     });
     return () => unsubscribe();
-  }, [router, setSessionEstablished, setSessionInfo]);
-
+  }, [router]);
+  
   useEffect(() => {
-    // This effect runs after the initial auth check.
-    // If the user is authenticated but the session isn't established, we show the dialog.
     if (user && !sessionEstablished) {
       setIsSessionDialogOpen(true);
+    } else if (user && sessionEstablished) {
+      setIsSessionDialogOpen(false);
     }
   }, [user, sessionEstablished]);
+
+  useEffect(() => {
+    if (!sessionEstablished || !sessionInfo?.name) {
+        setMotivationalQuote("");
+        return;
+    }
+
+    let currentQuoteIndex = -1;
+
+    const updateQuote = () => {
+        let nextIndex;
+        do {
+            nextIndex = Math.floor(Math.random() * motivationalQuotes.length);
+        } while (nextIndex === currentQuoteIndex);
+
+        currentQuoteIndex = nextIndex;
+        const quote = motivationalQuotes[nextIndex];
+        setMotivationalQuote(`Halo ${sessionInfo.name}, ${quote}`);
+    };
+
+    updateQuote();
+    const intervalId = setInterval(updateQuote, 7000); 
+
+    return () => clearInterval(intervalId);
+  }, [sessionEstablished, sessionInfo, motivationalQuotes]);
 
   const menuItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -96,7 +131,6 @@ function InnerLayout({ children }: { children: ReactNode }) {
             status: 'active'
         });
 
-        // Set session context AFTER successful DB write
         setSessionInfo({ name: values.name, position: values.position });
         setSessionEstablished(true);
         setIsSessionDialogOpen(false);
@@ -142,6 +176,13 @@ function InnerLayout({ children }: { children: ReactNode }) {
               data-ai-hint="company logo"
             />
           </Link>
+          <div className="flex-1 text-center px-4 hidden md:block">
+            {motivationalQuote && (
+                <p key={motivationalQuote} className="text-sm text-muted-foreground animate-fade-in-out">
+                    {motivationalQuote}
+                </p>
+            )}
+          </div>
           <UserNav />
         </header>
         
@@ -176,7 +217,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
         </nav>
       </div>
 
-      <Dialog open={isSessionDialogOpen && !sessionEstablished}>
+      <Dialog open={isSessionDialogOpen} onOpenChange={setIsSessionDialogOpen}>
         <DialogContent className="sm:max-w-[425px]" hideCloseButton>
           <DialogHeader>
             <DialogTitle>Mulai Sesi Kerja</DialogTitle>
