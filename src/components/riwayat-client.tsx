@@ -244,7 +244,7 @@ export function RiwayatClient() {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : combinedHistory.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-8">
                 {combinedHistory.map((entry) => {
                   if (entry.type === 'sale') {
                     return renderSaleCard(entry);

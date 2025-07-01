@@ -209,7 +209,7 @@ export function UpdateClient() {
         </div>
       </div>
 
-      <div className="flex-1 p-4 md:p-6">
+      <div className="flex-1 p-4 md:p-8">
         {loading ? (
            <div className="flex h-full w-full items-center justify-center">
              <Loader2 className="h-8 w-8 animate-spin text-primary" />
