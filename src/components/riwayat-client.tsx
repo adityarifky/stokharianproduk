@@ -68,7 +68,7 @@ export function RiwayatClient() {
   return (
     <div className="flex h-full flex-col">
        <div className="flex-none border-b bg-background p-4 md:p-6">
-        <h1 className="text-2xl font-bold tracking-tight">Riwayat Penjualan</h1>
+        <h1 className="text-2xl font-bold tracking-tight font-headline">Riwayat Penjualan</h1>
         <p className="text-muted-foreground">Daftar semua transaksi penjualan yang telah disimpan.</p>
       </div>
       <div className="flex-1 overflow-y-auto p-4 md:p-8">
