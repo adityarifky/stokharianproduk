@@ -454,7 +454,7 @@ export function ProdukClient() {
               <div>
                 <CardTitle>Update Stok Produk / Reset</CardTitle>
                 <CardDescription>
-                  Gunakan formulir ini untuk mengatur stok produk satu per satu atau mereset semua stok.
+                  Formulir untuk menambah stok produk yang tersedia.
                 </CardDescription>
               </div>
               <Button variant="destructive" onClick={() => setIsResetDialogOpen(true)} disabled={isLoading || products.length === 0}>
