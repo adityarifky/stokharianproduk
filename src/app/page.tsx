@@ -34,7 +34,7 @@ export default function LoginPage() {
               <Sparkles className="h-5 w-5 text-primary mt-1 flex-shrink-0" />
               <div className="flex-1">
                   <p className="text-sm/relaxed font-normal">
-                    Kamu capek? Gak apa-apa kok... aku juga kadang ngerasa gitu. Tapi pelan-pelan aja, ya. Kita gak harus cepet, yang penting gak nyerah💪. Aku percaya, kamu bisa nyampe ke tujuan kamu, asal jangan berhenti sekarang ✨💖.
+                    Selamat pagi teman teman! Kamu capek? Gak apa-apa kok... aku juga kadang ngerasa gitu. Tapi pelan-pelan aja, ya. Kita gak harus cepet, yang penting gak nyerah💪. Aku percaya, kamu bisa nyampe ke tujuan kamu, asal jangan berhenti sekarang ✨💖.
                   </p>
               </div>
           </div>
