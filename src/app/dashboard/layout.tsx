@@ -185,7 +185,9 @@ function InnerLayout({ children }: { children: ReactNode }) {
 
     } catch (error) {
       console.error("Session creation error:", error);
-       toast({
+      setSessionEstablished(false);
+      setSessionInfo(null);
+      toast({
         variant: "destructive",
         title: "Gagal Memulai Sesi",
         description: "Terjadi kesalahan saat menyimpan data sesi.",
