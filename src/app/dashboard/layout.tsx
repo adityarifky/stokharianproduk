@@ -177,7 +177,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
                 />
             </Link>
             <div className="flex items-center gap-2">
-                <div className="hidden flex-1 justify-center items-center px-4 md:flex">
+                <div className="flex flex-1 justify-center items-center px-4">
                 {motivationalQuote && (
                     <div key={motivationalQuote} className="relative animate-fade-in-out">
                       <div className="bg-muted text-muted-foreground rounded-lg px-3 py-1.5 text-xs shadow font-headline">
