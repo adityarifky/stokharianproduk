@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { collection, query, onSnapshot, orderBy, where, getDocs } from "firebase/firestore";
-import { Loader2, CalendarDays, TrendingUp, TrendingDown, FileSearch, Calendar as CalendarIcon, ArrowDown } from "lucide-react";
+import { Loader2, CalendarDays, TrendingUp, TrendingDown, FileSearch, Calendar as CalendarIcon } from "lucide-react";
 import Image from "next/image";
 import { format } from "date-fns";
 import { id as IndonesianLocale } from "date-fns/locale";
@@ -21,6 +21,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { ImagePreviewDialog } from "./image-preview-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface AccumulatedItem {
   productName: string;
@@ -40,6 +41,7 @@ export function LaporanClient() {
   const [accumulatedData, setAccumulatedData] = useState<AccumulatedItem[]>([]);
   const [isAccumulating, setIsAccumulating] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [isAccumulationDialogOpen, setIsAccumulationDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!sessionEstablished) {
@@ -200,8 +202,16 @@ export function LaporanClient() {
     <>
     <div className="flex flex-col">
       <div className="flex-none border-b bg-background p-4 md:p-6">
-        <h1 className="text-2xl font-bold tracking-tight font-headline">Laporan Harian</h1>
-        <p className="text-muted-foreground font-serif">Ringkasan penjualan dan sisa stok setelah reset harian.</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight font-headline">Laporan Harian</h1>
+              <p className="text-muted-foreground font-serif">Ringkasan penjualan dan sisa stok setelah reset harian.</p>
+            </div>
+            <Button onClick={() => setIsAccumulationDialogOpen(true)}>
+              <FileSearch className="mr-2 h-4 w-4" />
+              Buat Laporan Akumulasi
+            </Button>
+        </div>
       </div>
 
       <div className="flex-1 p-4 md:p-8 space-y-8">
@@ -252,15 +262,18 @@ export function LaporanClient() {
               </div>
           )}
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Laporan Akumulasi</CardTitle>
-            <CardDescription>
+      </div>
+    </div>
+    
+    <Dialog open={isAccumulationDialogOpen} onOpenChange={setIsAccumulationDialogOpen}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Buat Laporan Akumulasi</DialogTitle>
+            <DialogDescription>
               Pilih rentang tanggal untuk melihat total penjualan dan sisa stok produk.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
             <div className="flex flex-col sm:flex-row gap-4 items-center">
               <Popover>
                 <PopoverTrigger asChild>
@@ -308,7 +321,7 @@ export function LaporanClient() {
                 ) : (
                   <>
                     <FileSearch className="mr-2 h-4 w-4" />
-                    Buat Laporan Akumulasi
+                    Buat Laporan
                   </>
                 )}
               </Button>
@@ -319,7 +332,7 @@ export function LaporanClient() {
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : accumulatedData.length > 0 ? (
-                <div className="rounded-md border">
+                <div className="rounded-md border max-h-[50vh] overflow-y-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -349,13 +362,13 @@ export function LaporanClient() {
                 </div>
             ) : (
               <div className="flex h-20 items-center justify-center text-center text-sm text-muted-foreground">
-                Pilih rentang tanggal dan klik "Buat Laporan Akumulasi" untuk melihat hasilnya di sini.
+                Pilih rentang tanggal dan klik "Buat Laporan" untuk melihat hasilnya di sini.
               </div>
             )}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
     <ImagePreviewDialog imageUrl={previewImageUrl} onClose={() => setPreviewImageUrl(null)} />
     </>
   );
