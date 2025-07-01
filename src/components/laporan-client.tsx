@@ -198,8 +198,9 @@ export function LaporanClient() {
         <h1 className="text-2xl font-bold tracking-tight font-headline">Laporan Harian</h1>
         <p className="text-muted-foreground font-serif">Ringkasan penjualan dan sisa stok setelah reset harian.</p>
       </div>
-      <div className="flex flex-1 flex-col gap-8 overflow-hidden p-4 md:p-8">
-        <div className="flex-1 overflow-y-auto pr-4">
+
+      <div className="flex flex-1 flex-col overflow-y-hidden">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
           {loading ? (
               <div className="flex h-full w-full items-center justify-center">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -247,7 +248,7 @@ export function LaporanClient() {
           )}
         </div>
 
-        <div className="flex-none">
+        <div className="flex-none border-t bg-background p-4 md:p-8">
           <Card>
             <CardHeader>
               <CardTitle>Laporan Akumulasi</CardTitle>
