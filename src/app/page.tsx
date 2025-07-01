@@ -7,20 +7,67 @@ import { LoginForm } from "@/components/login-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Sun } from 'lucide-react';
 
 export default function LoginPage() {
   const [showPopup, setShowPopup] = useState(false);
+  const [currentDateTime, setCurrentDateTime] = useState<Date | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const popupTimer = setTimeout(() => {
       setShowPopup(true);
-    }, 500); // Delay showing the popup slightly
-    return () => clearTimeout(timer);
+    }, 500);
+
+    const clockTimer = setInterval(() => {
+      setCurrentDateTime(new Date());
+    }, 1000);
+
+    // Set initial time immediately on client to start the clock
+    setCurrentDateTime(new Date());
+
+    return () => {
+      clearTimeout(popupTimer);
+      clearInterval(clockTimer);
+    };
   }, []);
+
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat('id-ID', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    }).format(date);
+  };
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).replace(/\./g, ':');
+  };
 
   return (
     <>
+      <div className="fixed top-4 left-4 z-50 flex items-center gap-3 rounded-lg border bg-card/80 backdrop-blur-sm p-3 shadow-lg text-card-foreground">
+        <Sun className="h-8 w-8 text-primary animate-spin [animation-duration:10s]" />
+        <div>
+          {currentDateTime ? (
+            <>
+              <p className="font-bold font-headline">{formatDate(currentDateTime)}</p>
+              <p className="text-sm text-muted-foreground">{formatTime(currentDateTime)}</p>
+            </>
+          ) : (
+             <>
+              <p className="font-bold font-headline animate-pulse">Memuat tanggal...</p>
+              <p className="text-sm text-muted-foreground animate-pulse">Memuat jam...</p>
+            </>
+          )}
+        </div>
+      </div>
+
       <div
         className={cn(
           "fixed top-4 right-4 z-50 w-full max-w-xs rounded-lg border bg-card p-4 shadow-lg text-card-foreground transition-all duration-500 ease-in-out font-headline",
