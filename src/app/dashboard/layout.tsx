@@ -170,8 +170,8 @@ function InnerLayout({ children }: { children: ReactNode }) {
                 <Image
                   src="/Logo%20Dreampuff.png"
                   alt="Dreampuff Logo"
-                  width={32}
-                  height={32}
+                  width={40}
+                  height={40}
                   priority
                   data-ai-hint="company logo"
                   className="rounded-md"
