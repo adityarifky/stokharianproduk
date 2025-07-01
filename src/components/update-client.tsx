@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Minus, Plus, Loader2, Save, Lightbulb, X } from "lucide-react";
+import { Minus, Plus, Loader2, Save, Lightbulb } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from "@/context/SessionContext";
 import { cn } from "@/lib/utils";
@@ -38,12 +38,9 @@ export function UpdateClient() {
     if (sessionEstablished) {
       // Show reminder when component mounts and session is ready
       const showTimer = setTimeout(() => setShowReminder(true), 500);
-      // Hide reminder after 10 seconds
-      const hideTimer = setTimeout(() => setShowReminder(false), 10000);
 
       return () => {
         clearTimeout(showTimer);
-        clearTimeout(hideTimer);
       };
     }
   }, [sessionEstablished]);
@@ -181,21 +178,19 @@ export function UpdateClient() {
         )}
         role="alert"
       >
-        <div className="flex items-start gap-3">
-            <Lightbulb className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-            <div className="flex-1">
-                <p className="text-sm font-semibold">Pengingat! 😉</p>
-                <p className="text-xs font-normal text-muted-foreground mt-1">
-                    Jangan lupa kalo sudah closing, reset produk di menu 'Produk' supaya stok harian kamu tercatat dengan rapi.
-                </p>
-            </div>
-            <button 
-                onClick={() => setShowReminder(false)} 
-                className="absolute top-1 right-1 p-1 rounded-full text-muted-foreground hover:bg-muted"
-            >
-                <X className="h-4 w-4" />
-                <span className="sr-only">Tutup</span>
-            </button>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-start gap-3">
+              <Lightbulb className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                  <p className="text-sm font-semibold">Pengingat! 😉</p>
+                  <p className="text-xs font-normal text-muted-foreground mt-1">
+                      Jangan lupa kalo sudah closing, reset produk di menu 'Produk' supaya stok harian kamu tercatat dengan rapi.
+                  </p>
+              </div>
+          </div>
+          <Button onClick={() => setShowReminder(false)} className="w-full">
+            Paham
+          </Button>
         </div>
       </div>
 
