@@ -35,6 +35,7 @@ import { Loader2, Cookie, CakeSlice, Layers, CupSoda, Box, MoreHorizontal, Calen
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ChartData {
   date: string;
@@ -57,6 +58,7 @@ export function DashboardClient() {
   const [currentDate, setCurrentDate] = useState("");
   const { toast } = useToast();
   const { sessionEstablished } = useSession();
+  const isMobile = useIsMobile();
 
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: addDays(new Date(), -6),
@@ -324,7 +326,7 @@ export function DashboardClient() {
                         defaultMonth={dateRange?.from}
                         selected={dateRange}
                         onSelect={setDateRange}
-                        numberOfMonths={2}
+                        numberOfMonths={isMobile ? 1 : 2}
                         locale={IndonesianLocale}
                     />
                     </PopoverContent>

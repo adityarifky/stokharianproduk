@@ -22,6 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { ImagePreviewDialog } from "./image-preview-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface AccumulatedItem {
   productName: string;
@@ -42,6 +43,7 @@ export function LaporanClient() {
   const [isAccumulating, setIsAccumulating] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [isAccumulationDialogOpen, setIsAccumulationDialogOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (!sessionEstablished) {
@@ -307,7 +309,7 @@ export function LaporanClient() {
                     defaultMonth={dateRange?.from}
                     selected={dateRange}
                     onSelect={setDateRange}
-                    numberOfMonths={2}
+                    numberOfMonths={isMobile ? 1 : 2}
                     locale={IndonesianLocale}
                   />
                 </PopoverContent>

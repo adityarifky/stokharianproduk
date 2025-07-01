@@ -20,6 +20,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { ImagePreviewDialog } from "./image-preview-dialog";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type CombinedHistory = (SaleHistory & { type: 'sale' }) | (StockUpdateHistory & { type: 'stock_update' });
 
@@ -32,6 +33,7 @@ export function RiwayatClient() {
   const { sessionEstablished } = useSession();
   const [date, setDate] = useState<DateRange | undefined>();
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (!sessionEstablished) {
@@ -231,7 +233,7 @@ export function RiwayatClient() {
                 defaultMonth={date?.from}
                 selected={date}
                 onSelect={setDate}
-                numberOfMonths={2}
+                numberOfMonths={isMobile ? 1 : 2}
                 locale={IndonesianLocale}
               />
             </PopoverContent>
