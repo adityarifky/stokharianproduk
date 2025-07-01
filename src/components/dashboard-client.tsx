@@ -39,14 +39,22 @@ export function DashboardClient() {
       });
       setProducts(productData);
       setLoading(false);
-    }, (error) => {
+    }, (error: any) => {
       console.error("Error fetching products: ", error);
+      if (error.code === 'permission-denied') {
+        toast({
+            variant: "destructive",
+            title: "Akses Ditolak!",
+            description: "Pastikan aturan keamanan Firestore (security rules) sudah benar.",
+        });
+      } else {
+        toast({
+            variant: "destructive",
+            title: "Gagal Memuat Data",
+            description: `Gagal memuat produk. Error: ${error.code}.`,
+        });
+      }
       setLoading(false);
-      toast({
-        variant: "destructive",
-        title: "Gagal Memuat Data",
-        description: `Gagal memuat produk. Error: ${error.code}. Pastikan aturan Firestore sudah benar.`,
-      });
     });
 
     return () => unsubscribe();

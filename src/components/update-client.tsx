@@ -59,14 +59,22 @@ export function UpdateClient() {
       });
       setProducts(productData.sort((a, b) => a.name.localeCompare(b.name)));
       setLoading(false);
-    }, (error) => {
+    }, (error: any) => {
       console.error("Error fetching products: ", error);
+      if (error.code === 'permission-denied') {
+        toast({
+            variant: "destructive",
+            title: "Akses Ditolak!",
+            description: "Pastikan aturan keamanan Firestore (security rules) sudah benar.",
+        });
+      } else {
+        toast({
+            variant: "destructive",
+            title: "Gagal Memuat Data",
+            description: `Gagal memuat produk. Error: ${error.code}.`,
+        });
+      }
       setLoading(false);
-      toast({
-        variant: "destructive",
-        title: "Gagal Memuat Data",
-        description: `Gagal memuat produk. Error: ${error.code}. Pastikan aturan Firestore sudah benar.`,
-      });
     });
 
     return () => unsubscribe();
@@ -120,14 +128,6 @@ export function UpdateClient() {
     selectedCategory === "Semua" || product.category === selectedCategory
   );
 
-  if (loading) {
-    return (
-      <div className="flex h-full w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-full flex-col">
       <div className="flex-none border-b bg-background p-4 md:p-6">
@@ -145,7 +145,11 @@ export function UpdateClient() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 md:p-6">
-        {filteredProducts.length > 0 ? (
+        {loading ? (
+           <div className="flex h-full w-full items-center justify-center">
+             <Loader2 className="h-8 w-8 animate-spin text-primary" />
+           </div>
+        ) : filteredProducts.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {filteredProducts.map((product) => (
               <Card key={product.id} className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105 flex flex-col overflow-hidden">

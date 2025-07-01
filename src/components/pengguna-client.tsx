@@ -33,13 +33,21 @@ export function PenggunaClient() {
       });
       setSessions(sessionsData);
       setLoading(false);
-    }, (error) => {
+    }, (error: any) => {
       console.error("Firestore listener error:", error);
-      toast({
-        variant: "destructive",
-        title: "Gagal memuat data",
-        description: `Tidak dapat mengambil daftar sesi pengguna. Error: ${error.code}`,
-      });
+      if (error.code === 'permission-denied') {
+        toast({
+            variant: "destructive",
+            title: "Akses Ditolak!",
+            description: "Pastikan aturan keamanan Firestore (security rules) sudah benar.",
+        });
+      } else {
+        toast({
+            variant: "destructive",
+            title: "Gagal Memuat Data",
+            description: `Tidak dapat mengambil sesi pengguna. Error: ${error.code}`,
+        });
+      }
       setLoading(false);
     });
 
