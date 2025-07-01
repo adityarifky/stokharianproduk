@@ -289,7 +289,7 @@ export function DashboardClient() {
         <Card>
             <CardHeader className="flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <CardTitle>Grafik Stok</CardTitle>
+                    <CardTitle>Ringkasan Grafik Stok</CardTitle>
                     <CardDescription>Perbandingan stok masuk dan keluar berdasarkan rentang tanggal.</CardDescription>
                 </div>
                 <Popover>
