@@ -162,6 +162,22 @@ function InnerLayout({ children }: { children: ReactNode }) {
   
   const handleSessionSubmit = async (values: z.infer<typeof sessionFormSchema>) => {
     setIsSubmittingSession(true);
+
+    // Optimistic UI update: Set session locally first.
+    setSessionInfo({ name: values.name, position: values.position });
+    setSessionEstablished(true);
+    setIsSessionDialogOpen(false);
+    sessionForm.reset();
+    
+    toast({
+        title: `Selamat Bekerja, ${values.name}!`,
+        description: "Sesi Anda telah dimulai.",
+        duration: 3000,
+    });
+    
+    sendNotification('Sesi Baru Dimulai', { body: `${values.name} telah memulai sesi kerja.` });
+
+    // Try to sync with Firestore in the background.
     try {
         await addDoc(collection(db, "user_sessions"), {
             name: values.name,
@@ -169,28 +185,13 @@ function InnerLayout({ children }: { children: ReactNode }) {
             loginTime: serverTimestamp(),
             status: 'active'
         });
-
-        setSessionInfo({ name: values.name, position: values.position });
-        setSessionEstablished(true);
-        setIsSessionDialogOpen(false);
-        sessionForm.reset();
-        
-        toast({
-            title: `Selamat Bekerja, ${values.name}!`,
-            description: "Sesi Anda telah dimulai.",
-            duration: 3000,
-        });
-        
-        sendNotification('Sesi Baru Dimulai', { body: `${values.name} telah memulai sesi kerja.` });
-
     } catch (error) {
-      console.error("Session creation error:", error);
-      setSessionEstablished(false);
-      setSessionInfo(null);
+      console.error("Session creation failed to sync with server:", error);
+      // Notify user of sync failure without blocking them.
       toast({
         variant: "destructive",
-        title: "Gagal Memulai Sesi",
-        description: "Terjadi kesalahan saat menyimpan data sesi.",
+        title: "Gagal Sinkronisasi Sesi",
+        description: "Sesi Anda aktif, tapi gagal disimpan ke server. Periksa koneksi Anda.",
       });
     } finally {
         setIsSubmittingSession(false);
