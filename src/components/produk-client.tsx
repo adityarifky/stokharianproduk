@@ -31,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -449,6 +449,78 @@ export function ProdukClient() {
     <div className="flex h-full flex-col">
       <div className="flex-1 overflow-y-auto p-4 md:p-8">
         <div className="grid gap-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Update Stok Awal / Reset</CardTitle>
+              <CardDescription>
+                Gunakan formulir ini untuk mengatur stok awal produk satu per satu, atau reset semua stok ke 0.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...updateForm}>
+                <form onSubmit={updateForm.handleSubmit(onUpdateStockSubmit)} className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <FormField
+                      control={updateForm.control}
+                      name="productId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Pilih Produk</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value} disabled={isLoading}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Pilih produk untuk diupdate" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {products.map((product) => (
+                                <SelectItem key={product.id} value={product.id}>
+                                  {product.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={updateForm.control}
+                      name="stock"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Jumlah Stok Baru</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="0" {...field} disabled={isLoading} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                      <Button type="submit" disabled={isLoading}>
+                          {isLoading ? (
+                          <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Menyimpan...
+                          </>
+                          ) : (
+                          "Update Stok"
+                          )}
+                      </Button>
+                  </div>
+                </form>
+              </Form>
+            </CardContent>
+            <CardFooter className="border-t pt-6 flex justify-end">
+                <Button variant="destructive" onClick={() => setIsResetDialogOpen(true)} disabled={isLoading || products.length === 0}>
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Reset Semua Stok
+                </Button>
+            </CardFooter>
+          </Card>
+          
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center">
