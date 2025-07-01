@@ -270,7 +270,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
         </nav>
       </div>
 
-      <Dialog open={isSessionDialogOpen} onOpenChange={setIsSessionDialogOpen}>
+      <Dialog open={isSessionDialogOpen}>
         <DialogContent className="sm:max-w-[425px]" hideCloseButton>
           <DialogHeader>
             <DialogTitle>Mulai Sesi Kerja</DialogTitle>
