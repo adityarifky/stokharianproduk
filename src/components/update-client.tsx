@@ -11,44 +11,25 @@ import {
   onSnapshot,
   doc,
   updateDoc,
+  increment
 } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Minus, Plus, Loader2 } from "lucide-react";
-import { useForm, type SubmitHandler } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from "@/context/SessionContext";
-
-const updateStockSchema = z.object({
-  amount: z.coerce.number().int().min(1, { message: "Jumlah minimal 1" }),
-});
-type UpdateStockForm = z.infer<typeof updateStockSchema>;
 
 const categories = ["Semua", "Creampuff", "Cheesecake", "Millecrepes", "Minuman", "Snackbox", "Lainnya"];
 
 export function UpdateClient() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isUpdateStockDialogOpen, setIsUpdateStockDialogOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [updateAction, setUpdateAction] = useState<"add" | "subtract">("add");
+  const [updatingProductId, setUpdatingProductId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("Semua");
   const { toast } = useToast();
   const { sessionEstablished } = useSession();
-
-  const {
-    register: registerUpdate,
-    handleSubmit: handleSubmitUpdate,
-    formState: { errors: errorsUpdate },
-    reset: resetUpdate,
-  } = useForm<UpdateStockForm>({ resolver: zodResolver(updateStockSchema) });
 
   useEffect(() => {
     if (!sessionEstablished) {
@@ -86,41 +67,20 @@ export function UpdateClient() {
 
     return () => unsubscribe();
   }, [toast, sessionEstablished]);
-
-  const openUpdateDialog = (product: Product, action: "add" | "subtract") => {
-    setSelectedProduct(product);
-    setUpdateAction(action);
-    resetUpdate({ amount: 1 });
-    setIsUpdateStockDialogOpen(true);
-  };
-
-  const handleUpdateStock: SubmitHandler<UpdateStockForm> = async (data) => {
-    if (!selectedProduct) return;
-
-    const amount = data.amount;
-    const newStock = updateAction === 'add' ? selectedProduct.stock + amount : selectedProduct.stock - amount;
-
-    if (newStock < 0) {
+  
+  const handleStockChange = async (product: Product, amount: number) => {
+    if (product.stock + amount < 0) {
       toast({
         variant: "destructive",
-        title: "Gagal Memperbarui Stok",
-        description: "Stok tidak boleh kurang dari nol.",
+        title: "Stok Tidak Cukup",
+        description: "Stok produk tidak boleh kurang dari nol.",
       });
       return;
     }
-
+    setUpdatingProductId(product.id);
     try {
-      const productRef = doc(db, "products", selectedProduct.id);
-      await updateDoc(productRef, { stock: newStock });
-      
-      toast({
-        title: "Sukses",
-        description: `Stok untuk ${selectedProduct.name} telah diperbarui.`,
-      });
-
-      resetUpdate();
-      setIsUpdateStockDialogOpen(false);
-      setSelectedProduct(null);
+      const productRef = doc(db, "products", product.id);
+      await updateDoc(productRef, { stock: increment(amount) });
     } catch (error) {
       console.error("Error updating stock: ", error);
       toast({
@@ -128,9 +88,11 @@ export function UpdateClient() {
         title: "Gagal Memperbarui Stok",
         description: "Terjadi kesalahan saat menyimpan ke database.",
       });
+    } finally {
+      setUpdatingProductId(null);
     }
   };
-  
+
   const filteredProducts = products.filter(product => 
     selectedCategory === "Semua" || product.category === selectedCategory
   );
@@ -165,19 +127,20 @@ export function UpdateClient() {
                     <Image src={product.image || 'https://placehold.co/600x400.png'} alt={product.name} fill className="object-cover" data-ai-hint="pastry dreampuff"/>
                   </div>
                 </CardHeader>
-                <CardContent className="flex-1 p-4">
+                <CardContent className="flex-1 p-4 pb-2">
                   <CardTitle className="text-lg leading-tight mb-1">{product.name}</CardTitle>
-                  <p className="text-sm text-muted-foreground">Stok saat ini: <span className="font-bold text-foreground">{product.stock}</span></p>
+                  <p className="text-sm text-muted-foreground">Stok saat ini</p>
                 </CardContent>
-                <CardFooter className="flex justify-between gap-2 p-4 pt-0">
-                  <Button variant="outline" className="w-full" onClick={() => openUpdateDialog(product, "subtract")}>
-                    <Minus className="mr-2 h-4 w-4" />
-                    Kurangi
-                  </Button>
-                  <Button className="w-full" onClick={() => openUpdateDialog(product, "add")}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Tambah
-                  </Button>
+                <CardFooter className="flex justify-center items-center gap-4 p-4 pt-0">
+                    <Button variant="outline" size="icon" onClick={() => handleStockChange(product, -1)} disabled={product.stock <= 0 || updatingProductId === product.id}>
+                        <Minus className="h-4 w-4" />
+                    </Button>
+                    <div className="text-2xl font-bold w-12 text-center">
+                        {updatingProductId === product.id ? <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary"/> : product.stock}
+                    </div>
+                    <Button variant="outline" size="icon" onClick={() => handleStockChange(product, 1)} disabled={updatingProductId === product.id}>
+                        <Plus className="h-4 w-4" />
+                    </Button>
                 </CardFooter>
               </Card>
             ))}
@@ -189,27 +152,6 @@ export function UpdateClient() {
           </div>
         )}
       </div>
-
-      <Dialog open={isUpdateStockDialogOpen} onOpenChange={setIsUpdateStockDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>{updateAction === 'add' ? 'Tambah Stok' : 'Kurangi Stok'}: {selectedProduct?.name}</DialogTitle>
-            <DialogDescription>
-              Masukkan jumlah untuk {updateAction === 'add' ? 'ditambahkan ke' : 'dikurangi dari'} stok.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmitUpdate(handleUpdateStock)} className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="amount" className="text-right">Jumlah</Label>
-              <Input id="amount" type="number" {...registerUpdate("amount")} className="col-span-3" />
-              {errorsUpdate.amount && <p className="col-span-4 text-right text-sm text-destructive">{errorsUpdate.amount.message}</p>}
-            </div>
-            <DialogFooter>
-              <Button type="submit">{updateAction === 'add' ? 'Tambah Stok' : 'Kurangi Stok'}</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
