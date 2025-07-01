@@ -163,7 +163,6 @@ function InnerLayout({ children }: { children: ReactNode }) {
   const handleSessionSubmit = async (values: z.infer<typeof sessionFormSchema>) => {
     setIsSubmittingSession(true);
 
-    // Optimistic UI update: Set session locally first.
     setSessionInfo({ name: values.name, position: values.position });
     setSessionEstablished(true);
     setIsSessionDialogOpen(false);
@@ -177,7 +176,6 @@ function InnerLayout({ children }: { children: ReactNode }) {
     
     sendNotification('Sesi Baru Dimulai', { body: `${values.name} telah memulai sesi kerja.` });
 
-    // Try to sync with Firestore in the background.
     try {
         await addDoc(collection(db, "user_sessions"), {
             name: values.name,
@@ -187,16 +185,13 @@ function InnerLayout({ children }: { children: ReactNode }) {
         });
     } catch (error) {
       console.error("Session creation failed to sync with server:", error);
-      // If sync fails, revert the optimistic UI changes to show the dialog again
       setSessionEstablished(false);
       setSessionInfo(null);
-      setIsSessionDialogOpen(true);
-
-      // Notify user of sync failure, but this time it's a blocking issue.
+      
       toast({
         variant: "destructive",
-        title: "Gagal Memulai Sesi",
-        description: "Gagal terhubung ke server. Periksa koneksi Anda dan coba lagi.",
+        title: "Gagal Sinkronisasi Sesi",
+        description: "Gagal terhubung ke server. Sesi Anda tetap aktif secara lokal.",
       });
     } finally {
         setIsSubmittingSession(false);
@@ -225,10 +220,10 @@ function InnerLayout({ children }: { children: ReactNode }) {
                   data-ai-hint="company logo"
                 />
             </Link>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-shrink items-center gap-2 min-w-0">
                 {motivationalQuote && (
-                    <div key={motivationalQuote} className="relative animate-fade-in-out">
-                      <div className="max-w-[150px] truncate rounded-lg bg-muted px-3 py-1.5 text-xs text-muted-foreground shadow font-headline sm:max-w-none sm:whitespace-normal">
+                    <div key={motivationalQuote} className="relative animate-fade-in-out flex-shrink min-w-0">
+                      <div className="max-w-[140px] truncate rounded-lg bg-muted px-3 py-1.5 text-xs text-muted-foreground shadow font-headline sm:max-w-xs md:max-w-sm lg:max-w-none lg:whitespace-normal">
                         {motivationalQuote}
                       </div>
                       <div className="absolute top-1/2 -mt-2 -right-2 h-0 w-0
