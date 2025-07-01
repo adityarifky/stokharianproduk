@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from "next/link";
@@ -13,7 +14,7 @@ import {
   Users,
   Croissant,
 } from "lucide-react";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, type User } from "firebase/auth";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -45,6 +46,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
   const [isSessionDialogOpen, setIsSessionDialogOpen] = useState(false);
   const [sessionEstablished, setSessionEstablished] = useState(false);
   const [isSubmittingSession, setIsSubmittingSession] = useState(false);
@@ -54,22 +56,27 @@ export default function DashboardLayout({
     defaultValues: { name: "", position: undefined },
   });
 
+  // Effect 1: Handle Auth State. Runs once to check user login status.
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (!user) {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (!currentUser) {
         router.push("/");
       } else {
+        setUser(currentUser);
         setLoading(false);
-        // This logic ensures the dialog appears on every load if the session isn't established.
-        if (!sessionEstablished) {
-          setIsSessionDialogOpen(true);
-        }
       }
     });
-
     return () => unsubscribe();
-    // The dependency array ensures this effect reacts to changes in `sessionEstablished`.
-  }, [router, sessionEstablished]);
+  }, [router]);
+
+  // Effect 2: Handle Session Dialog. Runs only when the user is confirmed.
+  useEffect(() => {
+    // If we have a user, but the session isn't established yet, show the dialog.
+    // This logic ensures the dialog appears on every load if the session isn't established.
+    if (user && !sessionEstablished) {
+      setIsSessionDialogOpen(true);
+    }
+  }, [user, sessionEstablished]);
 
   const menuItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -90,6 +97,8 @@ export default function DashboardLayout({
             status: 'active'
         });
 
+        // The key: these are only set AFTER a successful Firestore write.
+        // This gives the backend enough time to be ready for subsequent reads.
         setSessionEstablished(true);
         setIsSessionDialogOpen(false);
         sessionForm.reset();
@@ -110,7 +119,6 @@ export default function DashboardLayout({
         setIsSubmittingSession(false);
     }
   };
-
 
   if (loading) {
     return (
