@@ -179,22 +179,6 @@ function InnerLayout({ children }: { children: ReactNode }) {
                     />
                      <span className="hidden md:inline-block font-headline">Dreampuff</span>
                 </Link>
-                <nav className="hidden flex-row items-center gap-5 text-sm font-medium md:flex lg:gap-6">
-                    {menuItems.map(item => (
-                        <Link 
-                            key={item.label} 
-                            href={item.href} 
-                            className={cn(
-                                "transition-colors hover:text-foreground",
-                                (pathname.startsWith(item.href) && (item.href !== "/dashboard" || pathname === "/dashboard")) ? "text-foreground font-semibold" : "text-muted-foreground",
-                                !sessionEstablished && "pointer-events-none opacity-50"
-                            )}
-                            aria-disabled={!sessionEstablished}
-                        >
-                            {item.label}
-                        </Link>
-                    ))}
-                </nav>
             </div>
             <div className="flex items-center gap-2">
                 <div className="hidden flex-1 justify-center items-center px-4 md:flex">
@@ -215,7 +199,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
             </div>
         </header>
 
-        <main className="flex-1 bg-muted/40 pb-24 md:pb-0">
+        <main className="flex-1 bg-muted/40 pb-24">
           {sessionEstablished ? children : (
             <div className="flex h-full w-full items-center justify-center p-4 text-center">
               <div className="flex flex-col items-center gap-2">
@@ -226,8 +210,8 @@ function InnerLayout({ children }: { children: ReactNode }) {
           )}
         </main>
         
-        <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background p-1 md:hidden">
-            <div className="grid grid-cols-6 gap-1">
+        <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background p-1">
+            <div className="flex w-full items-center justify-around">
                  {menuItems.map((item) => (
                     <Link
                         key={item.label}
