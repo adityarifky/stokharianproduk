@@ -218,7 +218,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
                 />
             </Link>
             <div className="flex items-center gap-2">
-                <div className="flex flex-1 justify-center items-center px-4">
+                <div className="flex-1 justify-center items-center px-4">
                 {motivationalQuote && (
                     <div key={motivationalQuote} className="relative animate-fade-in-out">
                       <div className="bg-muted text-muted-foreground rounded-lg px-3 py-1.5 text-xs shadow font-headline">
@@ -263,7 +263,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
                         aria-disabled={!sessionEstablished}
                     >
                         <item.icon className="h-5 w-5" />
-                        <span className="text-xs">{item.label === 'Update Produk' ? 'Update' : item.label}</span>
+                        <span className="text-xs">{item.label}</span>
                     </Link>
                 ))}
             </div>
