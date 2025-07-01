@@ -268,7 +268,7 @@ export function LaporanClient() {
     </div>
     
     <Dialog open={isAccumulationDialogOpen} onOpenChange={setIsAccumulationDialogOpen}>
-        <DialogContent className="sm:max-w-3xl">
+        <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Buat Laporan Akumulasi</DialogTitle>
             <DialogDescription>
