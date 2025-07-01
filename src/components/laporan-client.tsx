@@ -211,7 +211,7 @@ export function LaporanClient() {
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
           ) : reports.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-8">
                   {reports.map((report) => (
                       <Card key={report.id}>
                           <CardHeader>
