@@ -199,8 +199,9 @@ export function LaporanClient() {
         <p className="text-muted-foreground font-serif">Ringkasan penjualan dan sisa stok setelah reset harian.</p>
       </div>
 
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+      <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
+        {/* Reports List Section */}
+        <div>
           {loading ? (
               <div className="flex h-64 w-full items-center justify-center">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -248,107 +249,106 @@ export function LaporanClient() {
           )}
         </div>
 
-        <div className="flex-none border-t bg-background p-4 md:p-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Laporan Akumulasi</CardTitle>
-              <CardDescription>
-                Pilih rentang tanggal untuk melihat total penjualan dan sisa stok produk.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col sm:flex-row gap-4 items-center">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      id="date"
-                      variant={"outline"}
-                      className={cn(
-                        "w-full sm:w-[260px] justify-start text-left font-normal",
-                        !dateRange && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateRange?.from ? (
-                        dateRange.to ? (
-                          <>
-                            {format(dateRange.from, "d LLL y", { locale: IndonesianLocale })} -{" "}
-                            {format(dateRange.to, "d LLL y", { locale: IndonesianLocale })}
-                          </>
-                        ) : (
-                          format(dateRange.from, "d LLL y", { locale: IndonesianLocale })
-                        )
+        {/* Accumulation Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Laporan Akumulasi</CardTitle>
+            <CardDescription>
+              Pilih rentang tanggal untuk melihat total penjualan dan sisa stok produk.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-4 items-center">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="date"
+                    variant={"outline"}
+                    className={cn(
+                      "w-full sm:w-[260px] justify-start text-left font-normal",
+                      !dateRange && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange?.from ? (
+                      dateRange.to ? (
+                        <>
+                          {format(dateRange.from, "d LLL y", { locale: IndonesianLocale })} -{" "}
+                          {format(dateRange.to, "d LLL y", { locale: IndonesianLocale })}
+                        </>
                       ) : (
-                        <span>Pilih rentang tanggal</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      initialFocus
-                      mode="range"
-                      defaultMonth={dateRange?.from}
-                      selected={dateRange}
-                      onSelect={setDateRange}
-                      numberOfMonths={2}
-                      locale={IndonesianLocale}
-                    />
-                  </PopoverContent>
-                </Popover>
-                <Button onClick={handleAccumulateReports} disabled={isAccumulating}>
-                  {isAccumulating ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Memproses...
-                    </>
-                  ) : (
-                    <>
-                      <FileSearch className="mr-2 h-4 w-4" />
-                      Buat Laporan Akumulasi
-                    </>
-                  )}
-                </Button>
-              </div>
+                        format(dateRange.from, "d LLL y", { locale: IndonesianLocale })
+                      )
+                    ) : (
+                      <span>Pilih rentang tanggal</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={dateRange?.from}
+                    selected={dateRange}
+                    onSelect={setDateRange}
+                    numberOfMonths={2}
+                    locale={IndonesianLocale}
+                  />
+                </PopoverContent>
+              </Popover>
+              <Button onClick={handleAccumulateReports} disabled={isAccumulating}>
+                {isAccumulating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Memproses...
+                  </>
+                ) : (
+                  <>
+                    <FileSearch className="mr-2 h-4 w-4" />
+                    Buat Laporan Akumulasi
+                  </>
+                )}
+              </Button>
+            </div>
 
-              {isAccumulating ? (
-                <div className="flex h-40 w-full items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            {isAccumulating ? (
+              <div className="flex h-40 w-full items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : accumulatedData.length > 0 ? (
+                <div className="rounded-md border">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-[60px]">Gambar</TableHead>
+                                <TableHead>Nama Produk</TableHead>
+                                <TableHead>Kategori</TableHead>
+                                <TableHead className="text-right">Total Terjual</TableHead>
+                                <TableHead className="text-right">Total Sisa</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {accumulatedData.map((item) => (
+                                <TableRow key={item.productName}>
+                                    <TableCell>
+                                        <Image src={item.image} alt={item.productName} width={40} height={40} className="rounded-md object-cover aspect-square" data-ai-hint="product pastry" />
+                                    </TableCell>
+                                    <TableCell className="font-medium">{item.productName}</TableCell>
+                                    <TableCell>{item.category}</TableCell>
+                                    <TableCell className="text-right font-medium text-green-600">{item.totalSold}</TableCell>
+                                    <TableCell className="text-right font-medium text-red-600">{item.totalRejected}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
                 </div>
-              ) : accumulatedData.length > 0 ? (
-                  <div className="rounded-md border">
-                      <Table>
-                          <TableHeader>
-                              <TableRow>
-                                  <TableHead className="w-[60px]">Gambar</TableHead>
-                                  <TableHead>Nama Produk</TableHead>
-                                  <TableHead>Kategori</TableHead>
-                                  <TableHead className="text-right">Total Terjual</TableHead>
-                                  <TableHead className="text-right">Total Sisa</TableHead>
-                              </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                              {accumulatedData.map((item) => (
-                                  <TableRow key={item.productName}>
-                                      <TableCell>
-                                          <Image src={item.image} alt={item.productName} width={40} height={40} className="rounded-md object-cover aspect-square" data-ai-hint="product pastry" />
-                                      </TableCell>
-                                      <TableCell className="font-medium">{item.productName}</TableCell>
-                                      <TableCell>{item.category}</TableCell>
-                                      <TableCell className="text-right font-medium text-green-600">{item.totalSold}</TableCell>
-                                      <TableCell className="text-right font-medium text-red-600">{item.totalRejected}</TableCell>
-                                  </TableRow>
-                              ))}
-                          </TableBody>
-                      </Table>
-                  </div>
-              ) : (
-                <div className="flex h-20 items-center justify-center text-center text-sm text-muted-foreground">
-                  Pilih rentang tanggal dan klik "Buat Laporan Akumulasi" untuk melihat hasilnya di sini.
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+            ) : (
+              <div className="flex h-20 items-center justify-center text-center text-sm text-muted-foreground">
+                Pilih rentang tanggal dan klik "Buat Laporan Akumulasi" untuk melihat hasilnya di sini.
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
