@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import type { Product, SaleHistoryItem } from "@/lib/types";
 import { db } from "@/lib/firebase";
@@ -29,7 +29,7 @@ const categories = ["Semua", "Creampuff", "Cheesecake", "Millecrepes", "Minuman"
 export function UpdateClient() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const [savingProductId, setSavingProductId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("Semua");
   const [pendingChanges, setPendingChanges] = useState<Map<string, number>>(new Map());
   const { toast } = useToast();
@@ -40,12 +40,8 @@ export function UpdateClient() {
 
   useEffect(() => {
     if (sessionEstablished) {
-      // Show reminder when component mounts and session is ready
       const showTimer = setTimeout(() => setShowReminder(true), 500);
-
-      return () => {
-        clearTimeout(showTimer);
-      };
+      return () => clearTimeout(showTimer);
     }
   }, [sessionEstablished]);
 
@@ -102,8 +98,9 @@ export function UpdateClient() {
     setPendingChanges(newChanges);
   };
 
-  const handleSave = async () => {
-    if (pendingChanges.size === 0) {
+  const handleSave = async (product: Product) => {
+    const quantity = pendingChanges.get(product.id);
+    if (!quantity || quantity <= 0) {
         toast({ title: "Tidak Ada Perubahan", description: "Tidak ada produk yang terjual untuk disimpan." });
         return;
     }
@@ -112,52 +109,43 @@ export function UpdateClient() {
         return;
     }
 
-    setIsSaving(true);
+    setSavingProductId(product.id);
     try {
         const batch = writeBatch(db);
-        const historyItems: SaleHistoryItem[] = [];
-        let totalItems = 0;
-
-        for (const [productId, quantity] of pendingChanges.entries()) {
-            if (quantity > 0) {
-                const product = products.find(p => p.id === productId);
-                if (product) {
-                    const newStock = product.stock - quantity;
-                    const productRef = doc(db, "products", productId);
-                    batch.update(productRef, { stock: newStock });
-                    
-                    historyItems.push({
-                        productId: product.id,
-                        productName: product.name,
-                        quantity: quantity,
-                        image: product.image
-                    });
-                    totalItems += quantity;
-
-                    if (newStock === 0) {
-                        sendNotification('Stok Habis', { body: `Produk "${product.name}" telah habis.` });
-                    }
-                }
-            }
-        }
+        const newStock = product.stock - quantity;
         
-        if (historyItems.length > 0) {
-            const historyRef = doc(collection(db, "sales_history"));
-            batch.set(historyRef, {
-                timestamp: serverTimestamp(),
-                session: sessionInfo,
-                items: historyItems,
-                totalItems: totalItems,
-            });
-        }
+        const productRef = doc(db, "products", product.id);
+        batch.update(productRef, { stock: newStock });
+        
+        const historyItem: SaleHistoryItem = {
+            productId: product.id,
+            productName: product.name,
+            quantity: quantity,
+            image: product.image
+        };
+        
+        const historyRef = doc(collection(db, "sales_history"));
+        batch.set(historyRef, {
+            timestamp: serverTimestamp(),
+            session: sessionInfo,
+            items: [historyItem],
+            totalItems: quantity,
+        });
 
         await batch.commit();
 
         toast({
             title: "Sukses!",
-            description: `Berhasil menyimpan penjualan ${totalItems} produk.`
+            description: `Berhasil menyimpan penjualan ${quantity} ${product.name}.`
         });
-        setPendingChanges(new Map());
+        
+        const newChanges = new Map(pendingChanges);
+        newChanges.delete(product.id);
+        setPendingChanges(newChanges);
+
+        if (newStock === 0) {
+            sendNotification('Stok Habis', { body: `Produk "${product.name}" telah habis.` });
+        }
 
     } catch (error) {
         console.error("Error saving sales: ", error);
@@ -167,16 +155,13 @@ export function UpdateClient() {
             description: "Terjadi kesalahan saat menyimpan transaksi.",
         });
     } finally {
-        setIsSaving(false);
+        setSavingProductId(null);
     }
   };
-
 
   const filteredProducts = products.filter(product => 
     selectedCategory === "Semua" || product.category === selectedCategory
   );
-  
-  const totalPending = useMemo(() => Array.from(pendingChanges.values()).reduce((sum, current) => sum + current, 0), [pendingChanges]);
 
   return (
     <>
@@ -212,10 +197,6 @@ export function UpdateClient() {
                 <h1 className="text-2xl font-bold tracking-tight font-headline">Catat Produk Yang Sudah Terjual</h1>
                 <p className="text-muted-foreground font-serif">Kurangi stok untuk setiap produk yang laku terjual, lalu simpan.</p>
             </div>
-            <Button onClick={handleSave} disabled={isSaving || totalPending === 0} className="w-full sm:w-auto">
-                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Simpan {totalPending > 0 ? `Perubahan (${totalPending})` : 'Perubahan'}
-            </Button>
         </div>
         <div className="mt-4 w-full overflow-x-auto pb-2">
           <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full min-w-max">
@@ -250,15 +231,26 @@ export function UpdateClient() {
                   <CardTitle className="text-sm leading-tight mb-1 truncate">{product.name}</CardTitle>
                   <p className="text-xs text-muted-foreground">Stok: <span className="font-bold text-foreground">{product.stock}</span></p>
                 </CardContent>
-                <CardFooter className="flex justify-center items-center gap-2 p-2 pt-0">
-                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => handleQuantityChange(product, 1)} disabled={isSaving || product.stock <= (pendingChanges.get(product.id) || 0)}>
-                        <Plus className="h-4 w-4" />
-                    </Button>
-                    <div className="text-lg font-bold w-8 text-center">
-                        {pendingChanges.get(product.id) || 0}
+                <CardFooter className="flex flex-col items-stretch gap-2 p-2 pt-0">
+                    <div className="flex justify-center items-center gap-2">
+                        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => handleQuantityChange(product, -1)} disabled={!!savingProductId || (pendingChanges.get(product.id) || 0) <= 0}>
+                            <Minus className="h-4 w-4" />
+                        </Button>
+                        <div className="text-lg font-bold w-8 text-center">
+                            {pendingChanges.get(product.id) || 0}
+                        </div>
+                        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => handleQuantityChange(product, 1)} disabled={!!savingProductId || product.stock <= (pendingChanges.get(product.id) || 0)}>
+                            <Plus className="h-4 w-4" />
+                        </Button>
                     </div>
-                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => handleQuantityChange(product, -1)} disabled={isSaving || (pendingChanges.get(product.id) || 0) <= 0}>
-                        <Minus className="h-4 w-4" />
+                    <Button 
+                      size="sm" 
+                      className="h-8"
+                      onClick={() => handleSave(product)} 
+                      disabled={!!savingProductId || !pendingChanges.get(product.id)}
+                    >
+                      {savingProductId === product.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                      Simpan
                     </Button>
                 </CardFooter>
               </Card>
