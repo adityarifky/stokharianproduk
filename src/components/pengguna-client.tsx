@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, onSnapshot, orderBy } from "firebase/firestore";
+import { collection, query, onSnapshot, orderBy, where } from "firebase/firestore";
 import { Loader2 } from "lucide-react";
 
 import { db } from "@/lib/firebase";
@@ -32,7 +32,14 @@ export function PenggunaClient() {
     }
 
     setLoading(true);
-    const q = query(collection(db, "user_sessions"), orderBy("loginTime", "desc"));
+    const twentyFourHoursAgo = new Date();
+    twentyFourHoursAgo.setDate(twentyFourHoursAgo.getDate() - 1);
+
+    const q = query(
+      collection(db, "user_sessions"), 
+      where("loginTime", ">=", twentyFourHoursAgo),
+      orderBy("loginTime", "desc")
+    );
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const sessionsData: UserSession[] = [];
@@ -75,7 +82,7 @@ export function PenggunaClient() {
     <div className="flex h-full flex-col">
       <div className="flex-none border-b bg-background p-4 md:p-6">
         <h1 className="text-2xl font-bold tracking-tight font-headline">Pengguna Aktif</h1>
-        <p className="text-muted-foreground font-serif">Daftar pengguna yang telah masuk dan memulai sesi kerja.</p>
+        <p className="text-muted-foreground font-serif">Daftar pengguna yang telah masuk dalam 24 jam terakhir.</p>
       </div>
       <div className="flex-1 overflow-y-auto p-4 md:p-8">
         {loading ? (
@@ -103,7 +110,7 @@ export function PenggunaClient() {
                   )) : (
                     <TableRow>
                       <TableCell colSpan={3} className="h-24 text-center">
-                        Belum ada pengguna yang memulai sesi.
+                        Belum ada pengguna yang memulai sesi dalam 24 jam terakhir.
                       </TableCell>
                     </TableRow>
                   )}
