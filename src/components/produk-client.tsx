@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { collection, query, onSnapshot, doc, deleteDoc, updateDoc, writeBatch, setDoc, getDocs, where, serverTimestamp, orderBy, limit } from "firebase/firestore";
-import { Loader2, Trash2, Plus, RotateCcw, Camera, Pencil } from "lucide-react";
+import { Loader2, Trash2, Plus, RotateCcw, Camera, Pencil, ChefHat } from "lucide-react";
 import ReactCrop, { type Crop, type PixelCrop, centerCrop, makeAspectCrop } from 'react-image-crop';
 
 import { db } from "@/lib/firebase";
@@ -61,6 +61,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { useSession } from '@/context/SessionContext';
 import { ImagePreviewDialog } from './image-preview-dialog';
+import { cn } from '@/lib/utils';
 
 const addProductSchema = z.object({
   name: z.string().min(1, { message: "Nama produk harus diisi." }),
@@ -122,6 +123,7 @@ export function ProdukClient() {
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const { sessionEstablished, sessionInfo } = useSession();
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [showKitchenReminder, setShowKitchenReminder] = useState(false);
   
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [crop, setCrop] = useState<Crop>();
@@ -192,6 +194,13 @@ export function ProdukClient() {
       unsubscribe();
     }
   }, [toast, sessionEstablished]);
+  
+  useEffect(() => {
+    if (sessionEstablished) {
+        const timer = setTimeout(() => setShowKitchenReminder(true), 500);
+        return () => clearTimeout(timer);
+    }
+  }, [sessionEstablished]);
   
   async function getCroppedImg(
     image: HTMLImageElement,
@@ -559,6 +568,31 @@ export function ProdukClient() {
 
   return (
     <>
+    <div
+        className={cn(
+            "fixed top-24 right-0 md:right-4 z-50 w-full max-w-xs rounded-l-lg md:rounded-lg border bg-card p-4 shadow-lg text-card-foreground transition-transform duration-500 ease-in-out font-headline",
+            "transform translate-x-[calc(100%+2rem)]",
+            showKitchenReminder && "translate-x-0"
+        )}
+        role="alert"
+      >
+        <div className="flex flex-col gap-4">
+            <div className="flex items-start gap-3">
+                <ChefHat className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                    <p className="text-sm font-semibold">
+                        {sessionInfo?.name ? `Halo, ${sessionInfo.name}! 👋` : 'Informasi Penting'}
+                    </p>
+                    <p className="text-xs font-normal text-muted-foreground mt-1 font-serif">
+                        Penambahan produk hanya bisa dilakukan oleh kitchen. Apakah Anda berposisi sebagai kitchen?
+                    </p>
+                </div>
+            </div>
+            <Button onClick={() => setShowKitchenReminder(false)} className="w-full">
+                IYA
+            </Button>
+        </div>
+    </div>
     <div className="flex h-full flex-col">
        <div className="flex-none border-b bg-background p-4 md:p-6">
         <h1 className="text-2xl font-bold tracking-tight font-headline">Manajemen Produk</h1>
