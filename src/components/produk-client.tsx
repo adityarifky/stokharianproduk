@@ -120,7 +120,7 @@ export function ProdukClient() {
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
-  const { sessionEstablished } = useSession();
+  const { sessionEstablished, sessionInfo } = useSession();
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   
   const [sourceImage, setSourceImage] = useState<string | null>(null);
@@ -346,27 +346,62 @@ export function ProdukClient() {
   };
 
   const onUpdateStockSubmit = async (values: z.infer<typeof updateStockSchema>) => {
-    setIsLoading(true);
-    try {
-        const productRef = doc(db, "products", values.productId);
-        await updateDoc(productRef, { stock: values.stock });
-
-        const updatedProduct = products.find(p => p.id === values.productId);
-        toast({
-            title: "Sukses!",
-            description: `Stok untuk "${updatedProduct?.name}" berhasil diupdate.`,
-        });
-        updateForm.reset({ productId: "", stock: 0 });
-    } catch (error: any) {
-        console.error("Error updating stock: ", error);
-        toast({
-            variant: "destructive",
-            title: "Gagal Mengupdate Stok",
-            description: `Terjadi kesalahan saat menyimpan: ${error.code || error.message}`,
-        });
-    } finally {
-        setIsLoading(false);
-    }
+      setIsLoading(true);
+      if (!sessionInfo) {
+          toast({ variant: "destructive", title: "Sesi tidak valid", description: "Harap mulai sesi kerja baru untuk melanjutkan." });
+          setIsLoading(false);
+          return;
+      }
+  
+      try {
+          const productToUpdate = products.find(p => p.id === values.productId);
+          if (!productToUpdate) {
+              toast({ variant: "destructive", title: "Produk tidak ditemukan." });
+              setIsLoading(false);
+              return;
+          }
+  
+          const oldStock = productToUpdate.stock;
+          const newStock = values.stock;
+          const quantityAdded = newStock - oldStock;
+  
+          const batch = writeBatch(db);
+  
+          const productRef = doc(db, "products", values.productId);
+          batch.update(productRef, { stock: newStock });
+  
+          if (quantityAdded > 0) {
+              const stockHistoryRef = doc(collection(db, "stock_history"));
+              batch.set(stockHistoryRef, {
+                  timestamp: serverTimestamp(),
+                  session: sessionInfo,
+                  product: {
+                      id: productToUpdate.id,
+                      name: productToUpdate.name,
+                      image: productToUpdate.image,
+                  },
+                  quantityAdded: quantityAdded,
+                  stockAfter: newStock,
+              });
+          }
+          
+          await batch.commit();
+  
+          toast({
+              title: "Sukses!",
+              description: `Stok untuk "${productToUpdate.name}" berhasil diupdate.`,
+          });
+          updateForm.reset({ productId: "", stock: 0 });
+      } catch (error: any) {
+          console.error("Error updating stock: ", error);
+          toast({
+              variant: "destructive",
+              title: "Gagal Mengupdate Stok",
+              description: `Terjadi kesalahan saat menyimpan: ${error.code || error.message}`,
+          });
+      } finally {
+          setIsLoading(false);
+      }
   };
 
   const handleResetAllStock = async () => {

@@ -49,3 +49,19 @@ export interface Report {
   totalSold: number;
   totalRejected: number;
 }
+
+export interface StockUpdateHistory {
+  id: string;
+  timestamp: Timestamp;
+  session: {
+    name: string;
+    position: string;
+  };
+  product: {
+    id: string;
+    name: string;
+    image: string;
+  };
+  quantityAdded: number;
+  stockAfter: number;
+}
