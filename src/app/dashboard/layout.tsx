@@ -166,20 +166,17 @@ function InnerLayout({ children }: { children: ReactNode }) {
     <>
       <div className="flex min-h-screen w-full flex-col bg-muted/40">
         <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-4 md:px-6">
-            <div className="flex items-center gap-4">
-                 <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold">
-                    <Image
-                      src="/Logo%20Dreampuff.png"
-                      alt="Dreampuff Logo"
-                      width={32}
-                      height={32}
-                      priority
-                      data-ai-hint="company logo"
-                      className='rounded-md'
-                    />
-                     <span className="hidden md:inline-block font-headline">Dreampuff</span>
-                </Link>
-            </div>
+            <Link href="/dashboard">
+                <Image
+                  src="/Logo%20Dreampuff.png"
+                  alt="Dreampuff Logo"
+                  width={32}
+                  height={32}
+                  priority
+                  data-ai-hint="company logo"
+                  className="rounded-md"
+                />
+            </Link>
             <div className="flex items-center gap-2">
                 <div className="hidden flex-1 justify-center items-center px-4 md:flex">
                 {motivationalQuote && (
