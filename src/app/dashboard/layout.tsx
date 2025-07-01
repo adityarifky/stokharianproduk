@@ -60,6 +60,7 @@ export default function DashboardLayout({
         router.push("/");
       } else {
         setLoading(false);
+        // This logic ensures the dialog appears on every load if the session isn't established.
         if (!sessionEstablished) {
           setIsSessionDialogOpen(true);
         }
@@ -67,6 +68,7 @@ export default function DashboardLayout({
     });
 
     return () => unsubscribe();
+    // The dependency array ensures this effect reacts to changes in `sessionEstablished`.
   }, [router, sessionEstablished]);
 
   const menuItems = [
@@ -132,7 +134,7 @@ export default function DashboardLayout({
               data-ai-hint="company logo"
             />
           </Link>
-          <UserNav />
+          <UserNav sessionEstablished={sessionEstablished} />
         </header>
         
         <main className="flex-1 overflow-hidden">

@@ -36,7 +36,7 @@ const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, rej
   reader.readAsDataURL(file);
 });
 
-export function UserNav() {
+export function UserNav({ sessionEstablished }: { sessionEstablished: boolean }) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -51,21 +51,29 @@ export function UserNav() {
     let unsubscribeProfile: () => void = () => {};
 
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      // Clean up previous profile listener if it exists
+      setUser(currentUser);
+      
+      // Always clean up the previous profile listener when auth state changes or effect re-runs.
       unsubscribeProfile();
 
-      setUser(currentUser);
       if (currentUser) {
-        // For the new user, set up a listener for their profile document in Firestore
-        const profileDocRef = doc(db, "userProfiles", currentUser.uid);
-        unsubscribeProfile = onSnapshot(profileDocRef, (docSnap) => {
-          if (docSnap.exists() && docSnap.data().photoURL) {
-            setAvatarUrl(docSnap.data().photoURL);
-          } else {
-            // Fallback to the URL from the auth profile if one was ever set
-            setAvatarUrl(currentUser.photoURL || null);
-          }
-        });
+        // Only set up the Firestore listener if the user is logged in AND the session is established.
+        // This prevents the permission-denied error on initial load.
+        if (sessionEstablished) {
+          const profileDocRef = doc(db, "userProfiles", currentUser.uid);
+          unsubscribeProfile = onSnapshot(profileDocRef, (docSnap) => {
+            if (docSnap.exists() && docSnap.data().photoURL) {
+              setAvatarUrl(docSnap.data().photoURL);
+            } else {
+              // Fallback to the URL from the auth profile if one was ever set
+              setAvatarUrl(currentUser.photoURL || null);
+            }
+          });
+        } else {
+           // If the session isn't established, just use the auth photoURL as a temporary fallback.
+           // Do NOT query Firestore yet.
+          setAvatarUrl(currentUser.photoURL || null);
+        }
       } else {
         // No user, clear avatar
         setAvatarUrl(null);
@@ -76,7 +84,7 @@ export function UserNav() {
       unsubscribeAuth();
       unsubscribeProfile();
     };
-  }, []);
+  }, [sessionEstablished]); // Re-run effect when session is established to fetch profile
 
   const handleLogout = async () => {
     try {
