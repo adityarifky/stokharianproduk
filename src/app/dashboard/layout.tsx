@@ -27,10 +27,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const sessionFormSchema = z.object({
   name: z.string().min(1, "Nama harus diisi."),
-  position: z.string().min(1, "Posisi harus diisi."),
+  position: z.enum(["Kasir", "Kitchen", "Manajemen"], {
+    required_error: "Posisi harus dipilih.",
+  }),
 });
 
 export default function DashboardLayout({
@@ -47,7 +50,7 @@ export default function DashboardLayout({
 
   const sessionForm = useForm<z.infer<typeof sessionFormSchema>>({
     resolver: zodResolver(sessionFormSchema),
-    defaultValues: { name: "", position: "" },
+    defaultValues: { name: "", position: undefined },
   });
 
   useEffect(() => {
@@ -185,9 +188,18 @@ export default function DashboardLayout({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Posisi</FormLabel>
-                    <FormControl>
-                      <Input placeholder="cth. Kasir" {...field} disabled={isSubmittingSession} />
-                    </FormControl>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmittingSession}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih posisi Anda" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Kasir">Kasir</SelectItem>
+                        <SelectItem value="Kitchen">Kitchen</SelectItem>
+                        <SelectItem value="Manajemen">Manajemen</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
