@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { ImagePreviewDialog } from "./image-preview-dialog";
 
 interface AccumulatedItem {
   productName: string;
@@ -38,6 +39,7 @@ export function LaporanClient() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [accumulatedData, setAccumulatedData] = useState<AccumulatedItem[]>([]);
   const [isAccumulating, setIsAccumulating] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!sessionEstablished) {
@@ -179,7 +181,9 @@ export function LaporanClient() {
                     {items.map((item, index) => (
                         <TableRow key={`${item.productName}-${index}`}>
                             <TableCell>
-                                <Image src={item.image} alt={item.productName} width={40} height={40} className="rounded-md object-cover aspect-square" data-ai-hint="product pastry" />
+                                <button onClick={() => setPreviewImageUrl(item.image)} className="rounded-md overflow-hidden focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                                    <Image src={item.image} alt={item.productName} width={40} height={40} className="rounded-md object-cover aspect-square" data-ai-hint="product pastry" />
+                                </button>
                             </TableCell>
                             <TableCell className="font-medium">{item.productName}</TableCell>
                             <TableCell>{item.category}</TableCell>
@@ -193,6 +197,7 @@ export function LaporanClient() {
   };
   
   return (
+    <>
     <div className="flex h-full flex-col">
       <div className="flex-none border-b bg-background p-4 md:p-6">
         <h1 className="text-2xl font-bold tracking-tight font-headline">Laporan Harian</h1>
@@ -331,7 +336,9 @@ export function LaporanClient() {
                             {accumulatedData.map((item) => (
                                 <TableRow key={item.productName}>
                                     <TableCell>
-                                        <Image src={item.image} alt={item.productName} width={40} height={40} className="rounded-md object-cover aspect-square" data-ai-hint="product pastry" />
+                                        <button onClick={() => setPreviewImageUrl(item.image)} className="rounded-md overflow-hidden focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                                            <Image src={item.image} alt={item.productName} width={40} height={40} className="rounded-md object-cover aspect-square" data-ai-hint="product pastry" />
+                                        </button>
                                     </TableCell>
                                     <TableCell className="font-medium">{item.productName}</TableCell>
                                     <TableCell>{item.category}</TableCell>
@@ -351,5 +358,7 @@ export function LaporanClient() {
         </Card>
       </div>
     </div>
+    <ImagePreviewDialog imageUrl={previewImageUrl} onClose={() => setPreviewImageUrl(null)} />
+    </>
   );
 }

@@ -29,6 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import { LogOut, User as UserIcon, Loader2, Camera } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { useSession } from '@/context/SessionContext';
+import { ImagePreviewDialog } from './image-preview-dialog';
 
 // Helper to convert file to Data URI
 const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, reject) => {
@@ -49,6 +50,7 @@ export function UserNav() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
     let unsubscribeProfile: () => void = () => {};
@@ -191,12 +193,19 @@ export function UserNav() {
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center gap-4 py-4">
-            <Avatar className="h-24 w-24">
-              <AvatarImage src={previewUrl || "https://placehold.co/100x100.png"} alt="Pratinjau Profil" data-ai-hint="user avatar preview" />
-              <AvatarFallback>
-                {user?.email ? user.email.charAt(0).toUpperCase() : <UserIcon />}
-              </AvatarFallback>
-            </Avatar>
+             <button
+              onClick={() => previewUrl && setImagePreview(previewUrl)}
+              className="rounded-full overflow-hidden focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              aria-label="Lihat foto profil"
+              disabled={isUploading}
+            >
+              <Avatar className="h-24 w-24">
+                <AvatarImage src={previewUrl || "https://placehold.co/100x100.png"} alt="Pratinjau Profil" data-ai-hint="user avatar preview" />
+                <AvatarFallback>
+                  {user?.email ? user.email.charAt(0).toUpperCase() : <UserIcon />}
+                </AvatarFallback>
+              </Avatar>
+            </button>
             <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
               <Camera className="mr-2 h-4 w-4" />
               Pilih Gambar
@@ -221,6 +230,7 @@ export function UserNav() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ImagePreviewDialog imageUrl={imagePreview} onClose={() => setImagePreview(null)} />
     </>
   );
 }

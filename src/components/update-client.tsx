@@ -21,6 +21,7 @@ import { Minus, Plus, Loader2, Save, Lightbulb } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from "@/context/SessionContext";
 import { cn } from "@/lib/utils";
+import { ImagePreviewDialog } from "./image-preview-dialog";
 
 const categories = ["Semua", "Creampuff", "Cheesecake", "Millecrepes", "Minuman", "Snackbox", "Lainnya"];
 
@@ -33,6 +34,7 @@ export function UpdateClient() {
   const { toast } = useToast();
   const { sessionEstablished, sessionInfo } = useSession();
   const [showReminder, setShowReminder] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (sessionEstablished) {
@@ -169,6 +171,7 @@ export function UpdateClient() {
   const totalPending = useMemo(() => Array.from(pendingChanges.values()).reduce((sum, current) => sum + current, 0), [pendingChanges]);
 
   return (
+    <>
     <div className="flex h-full flex-col">
       <div
         className={cn(
@@ -219,22 +222,26 @@ export function UpdateClient() {
             {filteredProducts.map((product) => (
               <Card key={product.id} className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105 flex flex-col overflow-hidden">
                 <CardHeader className="p-0">
-                  <div className="relative aspect-square w-full">
+                  <button
+                    onClick={() => setPreviewImageUrl(product.image)}
+                    className="relative aspect-square w-full focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-t-lg overflow-hidden"
+                    aria-label={`Lihat gambar ${product.name}`}
+                  >
                     <Image src={product.image || 'https://placehold.co/600x400.png'} alt={product.name} fill className="object-cover" data-ai-hint="pastry dreampuff"/>
-                  </div>
+                  </button>
                 </CardHeader>
                 <CardContent className="flex-1 p-2">
                   <CardTitle className="text-sm leading-tight mb-1 truncate">{product.name}</CardTitle>
                   <p className="text-xs text-muted-foreground">Stok: <span className="font-bold text-foreground">{product.stock}</span></p>
                 </CardContent>
                 <CardFooter className="flex justify-center items-center gap-2 p-2 pt-0">
-                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => handleQuantityChange(product, -1)} disabled={isSaving || (pendingChanges.get(product.id) || 0) <= 0}>
+                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => handleQuantityChange(product, 1)} disabled={isSaving || product.stock <= (pendingChanges.get(product.id) || 0)}>
                         <Plus className="h-4 w-4" />
                     </Button>
                     <div className="text-lg font-bold w-8 text-center">
                         {pendingChanges.get(product.id) || 0}
                     </div>
-                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => handleQuantityChange(product, 1)} disabled={isSaving || product.stock <= (pendingChanges.get(product.id) || 0)}>
+                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => handleQuantityChange(product, -1)} disabled={isSaving || (pendingChanges.get(product.id) || 0) <= 0}>
                         <Minus className="h-4 w-4" />
                     </Button>
                 </CardFooter>
@@ -260,5 +267,7 @@ export function UpdateClient() {
         </div>
       )}
     </div>
+    <ImagePreviewDialog imageUrl={previewImageUrl} onClose={() => setPreviewImageUrl(null)} />
+    </>
   );
 }

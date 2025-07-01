@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { ImagePreviewDialog } from "./image-preview-dialog";
 
 export function RiwayatClient() {
   const { toast } = useToast();
@@ -26,6 +27,7 @@ export function RiwayatClient() {
   const [loading, setLoading] = useState(true);
   const { sessionEstablished } = useSession();
   const [date, setDate] = useState<DateRange | undefined>();
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!sessionEstablished) {
@@ -86,6 +88,7 @@ export function RiwayatClient() {
   }
 
   return (
+    <>
     <div className="flex h-full flex-col">
        <div className="flex-none border-b bg-background p-4 md:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -154,7 +157,9 @@ export function RiwayatClient() {
                                             {entry.items.map((item) => (
                                                 <li key={item.productId} className="flex items-center justify-between">
                                                     <div className="flex items-center gap-4">
-                                                        <Image src={item.image} alt={item.productName} width={40} height={40} className="rounded-md object-cover aspect-square" data-ai-hint="product pastry" />
+                                                        <button onClick={() => setPreviewImageUrl(item.image)} className="rounded-md overflow-hidden focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                                                            <Image src={item.image} alt={item.productName} width={40} height={40} className="rounded-md object-cover aspect-square" data-ai-hint="product pastry" />
+                                                        </button>
                                                         <span>{item.productName}</span>
                                                     </div>
                                                     <span className="font-medium">x {item.quantity}</span>
@@ -180,5 +185,7 @@ export function RiwayatClient() {
         )}
       </div>
     </div>
+    <ImagePreviewDialog imageUrl={previewImageUrl} onClose={() => setPreviewImageUrl(null)} />
+    </>
   );
 }

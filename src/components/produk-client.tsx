@@ -60,6 +60,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useSession } from '@/context/SessionContext';
+import { ImagePreviewDialog } from './image-preview-dialog';
 
 const addProductSchema = z.object({
   name: z.string().min(1, { message: "Nama produk harus diisi." }),
@@ -120,6 +121,7 @@ export function ProdukClient() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const { sessionEstablished } = useSession();
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [crop, setCrop] = useState<Crop>();
@@ -521,6 +523,7 @@ export function ProdukClient() {
   }
 
   return (
+    <>
     <div className="flex h-full flex-col">
        <div className="flex-none border-b bg-background p-4 md:p-6">
         <h1 className="text-2xl font-bold tracking-tight font-headline">Manajemen Produk</h1>
@@ -633,14 +636,16 @@ export function ProdukClient() {
                     {products.map((product) => (
                       <TableRow key={product.id}>
                         <TableCell>
-                          <Image
-                            src={product.image}
-                            alt={product.name}
-                            width={40}
-                            height={40}
-                            className="rounded-md object-cover aspect-square"
-                            data-ai-hint="product food"
-                          />
+                          <button onClick={() => setPreviewImageUrl(product.image)} className="rounded-md overflow-hidden focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                            <Image
+                              src={product.image}
+                              alt={product.name}
+                              width={40}
+                              height={40}
+                              className="rounded-md object-cover aspect-square"
+                              data-ai-hint="product food"
+                            />
+                          </button>
                         </TableCell>
                         <TableCell className="font-medium">{product.name}</TableCell>
                         <TableCell>{product.category}</TableCell>
@@ -935,5 +940,7 @@ export function ProdukClient() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    <ImagePreviewDialog imageUrl={previewImageUrl} onClose={() => setPreviewImageUrl(null)} />
+    </>
   );
 }
