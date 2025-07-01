@@ -22,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSession } from "@/context/SessionContext";
 import { cn } from "@/lib/utils";
 import { ImagePreviewDialog } from "./image-preview-dialog";
+import { useBrowserNotifications } from "@/hooks/use-browser-notifications";
 
 const categories = ["Semua", "Creampuff", "Cheesecake", "Millecrepes", "Minuman", "Snackbox", "Lainnya"];
 
@@ -35,6 +36,7 @@ export function UpdateClient() {
   const { sessionEstablished, sessionInfo } = useSession();
   const [showReminder, setShowReminder] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const { sendNotification } = useBrowserNotifications();
 
   useEffect(() => {
     if (sessionEstablished) {
@@ -120,8 +122,10 @@ export function UpdateClient() {
             if (quantity > 0) {
                 const product = products.find(p => p.id === productId);
                 if (product) {
+                    const newStock = product.stock - quantity;
                     const productRef = doc(db, "products", productId);
-                    batch.update(productRef, { stock: product.stock - quantity });
+                    batch.update(productRef, { stock: newStock });
+                    
                     historyItems.push({
                         productId: product.id,
                         productName: product.name,
@@ -129,6 +133,10 @@ export function UpdateClient() {
                         image: product.image
                     });
                     totalItems += quantity;
+
+                    if (newStock === 0) {
+                        sendNotification('Stok Habis', { body: `Produk "${product.name}" telah habis.` });
+                    }
                 }
             }
         }

@@ -62,6 +62,7 @@ import { Label } from "@/components/ui/label";
 import { useSession } from '@/context/SessionContext';
 import { ImagePreviewDialog } from './image-preview-dialog';
 import { cn } from '@/lib/utils';
+import { useBrowserNotifications } from '@/hooks/use-browser-notifications';
 
 const addProductSchema = z.object({
   name: z.string().min(1, { message: "Nama produk harus diisi." }),
@@ -124,6 +125,7 @@ export function ProdukClient() {
   const { sessionEstablished, sessionInfo } = useSession();
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [showKitchenReminder, setShowKitchenReminder] = useState(false);
+  const { sendNotification } = useBrowserNotifications();
   
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [crop, setCrop] = useState<Crop>();
@@ -395,6 +397,10 @@ export function ProdukClient() {
           }
           
           await batch.commit();
+
+          if (newStock === 0 && oldStock > 0) {
+            sendNotification('Stok Habis', { body: `Stok untuk "${productToUpdate.name}" telah diatur menjadi 0.` });
+          }
   
           toast({
               title: "Sukses!",
@@ -500,6 +506,8 @@ export function ProdukClient() {
         title: "Sukses!",
         description: "Laporan harian telah dibuat dan semua stok produk berhasil di-reset.",
       });
+
+      sendNotification('Stok Direset', { body: 'Laporan harian berhasil dibuat dan semua stok produk telah di-reset ke 0.' });
 
     } catch (error: any) {
       console.error("Error generating report and resetting stock: ", error);

@@ -30,6 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SessionProvider, useSession } from "@/context/SessionContext";
 import { cn } from "@/lib/utils";
+import { useBrowserNotifications } from "@/hooks/use-browser-notifications";
 
 const sessionFormSchema = z.object({
   name: z.string().min(1, "Nama harus diisi."),
@@ -48,6 +49,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
   const { sessionEstablished, setSessionEstablished, setSessionInfo, sessionInfo } = useSession();
   const [isSubmittingSession, setIsSubmittingSession] = useState(false);
   const [motivationalQuote, setMotivationalQuote] = useState("");
+  const { sendNotification } = useBrowserNotifications();
 
   const motivationalQuotes = useMemo(() => [
       "Mulai kerja dulu ya, biar gak jadi beban tim 🤡💼",
@@ -178,6 +180,8 @@ function InnerLayout({ children }: { children: ReactNode }) {
             description: "Sesi Anda telah dimulai.",
             duration: 3000,
         });
+        
+        sendNotification('Sesi Baru Dimulai', { body: `${values.name} telah memulai sesi kerja.` });
 
     } catch (error) {
       console.error("Session creation error:", error);
