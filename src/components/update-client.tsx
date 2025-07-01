@@ -184,6 +184,7 @@ export function UpdateClient() {
               <div className="flex-1">
                   <p className="text-sm font-semibold">Pengingat! 😉</p>
                   <p className="text-xs font-normal text-muted-foreground mt-1">
+                      {sessionInfo?.name && <span>Halo {sessionInfo.name}, </span>}
                       Jangan lupa kalo sudah closing, reset produk di menu 'Produk' supaya stok harian kamu tercatat dengan rapi.
                   </p>
               </div>
