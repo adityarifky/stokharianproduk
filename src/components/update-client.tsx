@@ -17,9 +17,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Minus, Plus, Loader2, Save } from "lucide-react";
+import { Minus, Plus, Loader2, Save, Lightbulb, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from "@/context/SessionContext";
+import { cn } from "@/lib/utils";
 
 const categories = ["Semua", "Creampuff", "Cheesecake", "Millecrepes", "Minuman", "Snackbox", "Lainnya"];
 
@@ -31,6 +32,21 @@ export function UpdateClient() {
   const [pendingChanges, setPendingChanges] = useState<Map<string, number>>(new Map());
   const { toast } = useToast();
   const { sessionEstablished, sessionInfo } = useSession();
+  const [showReminder, setShowReminder] = useState(false);
+
+  useEffect(() => {
+    if (sessionEstablished) {
+      // Show reminder when component mounts and session is ready
+      const showTimer = setTimeout(() => setShowReminder(true), 500);
+      // Hide reminder after 10 seconds
+      const hideTimer = setTimeout(() => setShowReminder(false), 10000);
+
+      return () => {
+        clearTimeout(showTimer);
+        clearTimeout(hideTimer);
+      };
+    }
+  }, [sessionEstablished]);
 
   useEffect(() => {
     if (!sessionEstablished) {
@@ -157,6 +173,32 @@ export function UpdateClient() {
 
   return (
     <div className="flex h-full flex-col">
+      <div
+        className={cn(
+          "fixed top-24 right-0 md:right-4 z-50 w-full max-w-xs rounded-l-lg md:rounded-lg border bg-card p-4 shadow-lg text-card-foreground transition-transform duration-500 ease-in-out font-headline",
+          "transform translate-x-[calc(100%+2rem)]",
+          showReminder && "translate-x-0"
+        )}
+        role="alert"
+      >
+        <div className="flex items-start gap-3">
+            <Lightbulb className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+                <p className="text-sm font-semibold">Pengingat! 😉</p>
+                <p className="text-xs font-normal text-muted-foreground mt-1">
+                    Jangan lupa kalo sudah closing, reset produk di menu 'Produk' supaya stok harian kamu tercatat dengan rapi.
+                </p>
+            </div>
+            <button 
+                onClick={() => setShowReminder(false)} 
+                className="absolute top-1 right-1 p-1 rounded-full text-muted-foreground hover:bg-muted"
+            >
+                <X className="h-4 w-4" />
+                <span className="sr-only">Tutup</span>
+            </button>
+        </div>
+      </div>
+
       <div className="flex-none border-b bg-background p-4 md:p-6">
         <h1 className="text-2xl font-bold tracking-tight font-headline">Catat Produk Yang Sudah Terjual</h1>
         <p className="text-muted-foreground font-serif">Kurangi stok untuk setiap produk yang laku terjual, lalu simpan.</p>
