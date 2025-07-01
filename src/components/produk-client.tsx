@@ -7,12 +7,12 @@ import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { collection, query, onSnapshot, doc, deleteDoc, updateDoc, writeBatch, setDoc } from "firebase/firestore";
+import { collection, query, onSnapshot, doc, deleteDoc, updateDoc, writeBatch, setDoc, getDocs, where, serverTimestamp, orderBy, limit } from "firebase/firestore";
 import { Loader2, Trash2, Plus, RotateCcw, Camera, Pencil } from "lucide-react";
 import ReactCrop, { type Crop, type PixelCrop, centerCrop, makeAspectCrop } from 'react-image-crop';
 
 import { db } from "@/lib/firebase";
-import type { Product } from "@/lib/types";
+import type { Product, ReportItem, SaleHistory } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -371,28 +371,103 @@ export function ProdukClient() {
     setIsLoading(true);
     try {
       const batch = writeBatch(db);
-      products.forEach((product) => {
+
+      // 1. Fetch all current products to get their final stock
+      const productsCollection = collection(db, "products");
+      const productsSnapshot = await getDocs(productsCollection);
+      const currentProducts: Product[] = [];
+      productsSnapshot.forEach(doc => {
+        currentProducts.push({ id: doc.id, ...doc.data() } as Product);
+      });
+
+      // 2. Prepare the list of "rejected" items (remaining stock)
+      const itemsRejected: ReportItem[] = currentProducts
+        .filter(p => p.stock > 0)
+        .map(p => ({
+          productName: p.name,
+          category: p.category,
+          quantity: p.stock,
+          image: p.image,
+        }));
+      const totalRejected = itemsRejected.reduce((sum, item) => sum + item.quantity, 0);
+
+      // 3. Get the timestamp of the last report to avoid double-counting sales
+      const reportsCollection = collection(db, "daily_reports");
+      const lastReportQuery = query(reportsCollection, orderBy("timestamp", "desc"), limit(1));
+      const lastReportSnapshot = await getDocs(lastReportQuery);
+      const lastReportTimestamp = lastReportSnapshot.empty 
+        ? new Date(0) // If no reports, fetch all history from the beginning of time
+        : lastReportSnapshot.docs[0].data().timestamp;
+
+      // 4. Fetch sales that occurred after the last report was generated
+      const salesQuery = query(
+        collection(db, "sales_history"),
+        where("timestamp", ">", lastReportTimestamp)
+      );
+      const salesSnapshot = await getDocs(salesQuery);
+
+      // 5. Aggregate all sold items
+      const soldItemsMap = new Map<string, ReportItem & { productId: string }>();
+      salesSnapshot.docs.forEach(doc => {
+        const sale = doc.data() as Omit<SaleHistory, 'id'>;
+        sale.items.forEach(item => {
+          const existing = soldItemsMap.get(item.productId);
+          if (existing) {
+            existing.quantity += item.quantity;
+          } else {
+            const productDetails = currentProducts.find(p => p.id === item.productId);
+            soldItemsMap.set(item.productId, {
+              productId: item.productId,
+              productName: item.productName,
+              quantity: item.quantity,
+              category: productDetails?.category || 'Lainnya',
+              image: item.image,
+            });
+          }
+        });
+      });
+      const itemsSold: ReportItem[] = Array.from(soldItemsMap.values()).map(({ productId, ...rest }) => rest);
+      const totalSold = itemsSold.reduce((sum, item) => sum + item.quantity, 0);
+
+      // 6. Create the report document in the batch
+      if (itemsSold.length > 0 || itemsRejected.length > 0) {
+        const reportRef = doc(reportsCollection);
+        batch.set(reportRef, {
+          timestamp: serverTimestamp(),
+          itemsSold,
+          itemsRejected,
+          totalSold,
+          totalRejected,
+        });
+      }
+
+      // 7. Add stock reset operations to the batch
+      currentProducts.forEach((product) => {
         const productRef = doc(db, "products", product.id);
         batch.update(productRef, { stock: 0 });
       });
+      
+      // 8. Commit everything at once
       await batch.commit();
 
       toast({
         title: "Sukses!",
-        description: "Semua stok produk berhasil di-reset ke 0.",
+        description: "Laporan harian telah dibuat dan semua stok produk berhasil di-reset.",
       });
+
     } catch (error: any) {
-      console.error("Error resetting all stock: ", error);
+      console.error("Error generating report and resetting stock: ", error);
       toast({
         variant: "destructive",
-        title: "Gagal Mereset Stok",
-        description: `Terjadi kesalahan saat menyimpan: ${error.code || error.message}`,
+        title: "Gagal Memproses",
+        description: `Terjadi kesalahan: ${error.code || error.message}.`,
       });
     } finally {
       setIsResetDialogOpen(false);
       setIsLoading(false);
     }
   };
+
 
   const openDeleteDialog = (id: string) => {
     setProductToDelete(id);
@@ -835,9 +910,9 @@ export function ProdukClient() {
       <AlertDialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reset Semua Stok Produk?</AlertDialogTitle>
+            <AlertDialogTitle>Buat Laporan & Reset Stok?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tindakan ini akan mengatur ulang stok SEMUA produk menjadi 0. Ini biasanya dilakukan setelah tutup toko harian. Tindakan ini tidak dapat dibatalkan.
+              Tindakan ini akan membuat laporan harian berdasarkan stok sisa dan penjualan sejak laporan terakhir, lalu me-reset SEMUA stok produk menjadi 0. Tindakan ini tidak dapat dibatalkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -853,7 +928,7 @@ export function ProdukClient() {
                   Memproses...
                 </>
               ) : (
-                "Ya, Reset"
+                "Ya, Buat & Reset"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

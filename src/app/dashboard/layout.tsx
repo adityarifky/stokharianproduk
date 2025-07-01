@@ -117,7 +117,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
     { href: "/dashboard/update", label: "Update Produk", icon: FilePenLine },
     { href: "/dashboard/produk", label: "Produk", icon: Croissant },
     { href: "/dashboard/riwayat", label: "Riwayat", icon: History },
-    { href: "#", label: "Laporan", icon: BarChart },
+    { href: "/dashboard/laporan", label: "Laporan", icon: BarChart },
     { href: "/dashboard/pengguna", label: "Pengguna", icon: Users },
   ];
   

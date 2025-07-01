@@ -33,3 +33,19 @@ export interface SaleHistory {
   items: SaleHistoryItem[];
   totalItems: number;
 }
+
+export interface ReportItem {
+  productName: string;
+  category: string;
+  quantity: number;
+  image: string;
+}
+
+export interface Report {
+  id:string;
+  timestamp: Timestamp;
+  itemsSold: ReportItem[];
+  itemsRejected: ReportItem[];
+  totalSold: number;
+  totalRejected: number;
+}
