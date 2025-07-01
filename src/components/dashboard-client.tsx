@@ -95,76 +95,82 @@ export function DashboardClient() {
     setCurrentDate(today.toLocaleDateString('id-ID', options).replace(/,/g, ''));
   }, []);
   
-  if (loading) {
-    return (
-      <div className="flex h-[calc(100vh-200px)] w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mb-8 p-4 md:p-8">
-      <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Creampuff</CardTitle>
-          <Cookie className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{categoryCounts.Creampuff}</div>
-          <p className="text-xs text-muted-foreground font-serif">{currentDate || 'Memuat...'}</p>
-        </CardContent>
-      </Card>
-      <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Cheesecake</CardTitle>
-          <CakeSlice className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{categoryCounts.Cheesecake}</div>
-          <p className="text-xs text-muted-foreground font-serif">{currentDate || 'Memuat...'}</p>
-        </CardContent>
-      </Card>
-      <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Millecrepes</CardTitle>
-          <Layers className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{categoryCounts.Millecrepes}</div>
-          <p className="text-xs text-muted-foreground font-serif">{currentDate || 'Memuat...'}</p>
-        </CardContent>
-      </Card>
-      <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Minuman</CardTitle>
-          <CupSoda className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{categoryCounts.Minuman}</div>
-          <p className="text-xs text-muted-foreground font-serif">{currentDate || 'Memuat...'}</p>
-        </CardContent>
-      </Card>
-      <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Snackbox</CardTitle>
-          <Box className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{categoryCounts.Snackbox}</div>
-          <p className="text-xs text-muted-foreground font-serif">{currentDate || 'Memuat...'}</p>
-        </CardContent>
-      </Card>
-      <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Lainnya</CardTitle>
-          <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{categoryCounts.Lainnya}</div>
-          <p className="text-xs text-muted-foreground font-serif">{currentDate || 'Memuat...'}</p>
-        </CardContent>
-      </Card>
+    <div className="flex h-full flex-col">
+       <div className="flex-none border-b bg-background p-4 md:p-6">
+        <h1 className="text-2xl font-bold tracking-tight font-headline">Dashboard</h1>
+        <p className="text-muted-foreground font-serif">Ringkasan stok produk harian Anda.</p>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4 md:p-8">
+        {loading ? (
+            <div className="flex h-full w-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Creampuff</CardTitle>
+                    <Cookie className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                    <div className="text-2xl font-bold">{categoryCounts.Creampuff}</div>
+                    <p className="text-xs text-muted-foreground font-serif">{currentDate || 'Memuat...'}</p>
+                    </CardContent>
+                </Card>
+                <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Cheesecake</CardTitle>
+                    <CakeSlice className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                    <div className="text-2xl font-bold">{categoryCounts.Cheesecake}</div>
+                    <p className="text-xs text-muted-foreground font-serif">{currentDate || 'Memuat...'}</p>
+                    </CardContent>
+                </Card>
+                <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Millecrepes</CardTitle>
+                    <Layers className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                    <div className="text-2xl font-bold">{categoryCounts.Millecrepes}</div>
+                    <p className="text-xs text-muted-foreground font-serif">{currentDate || 'Memuat...'}</p>
+                    </CardContent>
+                </Card>
+                <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Minuman</CardTitle>
+                    <CupSoda className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                    <div className="text-2xl font-bold">{categoryCounts.Minuman}</div>
+                    <p className="text-xs text-muted-foreground font-serif">{currentDate || 'Memuat...'}</p>
+                    </CardContent>
+                </Card>
+                <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Snackbox</CardTitle>
+                    <Box className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                    <div className="text-2xl font-bold">{categoryCounts.Snackbox}</div>
+                    <p className="text-xs text-muted-foreground font-serif">{currentDate || 'Memuat...'}</p>
+                    </CardContent>
+                </Card>
+                <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Lainnya</CardTitle>
+                    <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                    <div className="text-2xl font-bold">{categoryCounts.Lainnya}</div>
+                    <p className="text-xs text-muted-foreground font-serif">{currentDate || 'Memuat...'}</p>
+                    </CardContent>
+                </Card>
+            </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -73,18 +73,18 @@ export function PenggunaClient() {
 
   return (
     <div className="flex h-full flex-col">
+      <div className="flex-none border-b bg-background p-4 md:p-6">
+        <h1 className="text-2xl font-bold tracking-tight font-headline">Pengguna Aktif</h1>
+        <p className="text-muted-foreground font-serif">Daftar pengguna yang telah masuk dan memulai sesi kerja.</p>
+      </div>
       <div className="flex-1 overflow-y-auto p-4 md:p-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Pengguna Aktif</CardTitle>
-            <CardDescription>Daftar pengguna yang telah masuk dan memulai sesi kerja.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex justify-center items-center h-40">
+        {loading ? (
+            <div className="flex h-full w-full items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : (
+            </div>
+        ) : (
+        <Card>
+          <CardContent className="pt-6">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -109,9 +109,9 @@ export function PenggunaClient() {
                   )}
                 </TableBody>
               </Table>
-            )}
           </CardContent>
         </Card>
+        )}
       </div>
     </div>
   );
