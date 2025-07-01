@@ -56,17 +56,26 @@ function InnerLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (!currentUser) {
+        setSessionEstablished(false);
+        setSessionInfo(null);
         router.push("/");
       } else {
         setUser(currentUser);
-        if (!sessionEstablished) {
-          setIsSessionDialogOpen(true);
-        }
+        // We defer opening the dialog until the session context confirms it's not established.
+        // This avoids race conditions on page load.
         setLoading(false);
       }
     });
     return () => unsubscribe();
-  }, [router, sessionEstablished]);
+  }, [router, setSessionEstablished, setSessionInfo]);
+
+  useEffect(() => {
+    // This effect runs after the initial auth check.
+    // If the user is authenticated but the session isn't established, we show the dialog.
+    if (user && !sessionEstablished) {
+      setIsSessionDialogOpen(true);
+    }
+  }, [user, sessionEstablished]);
 
   const menuItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -87,14 +96,16 @@ function InnerLayout({ children }: { children: ReactNode }) {
             status: 'active'
         });
 
-        setIsSessionDialogOpen(false);
+        // Set session context AFTER successful DB write
         setSessionInfo({ name: values.name, position: values.position });
         setSessionEstablished(true);
+        setIsSessionDialogOpen(false);
         sessionForm.reset();
         
         toast({
             title: `Selamat Bekerja, ${values.name}!`,
             description: "Sesi Anda telah dimulai.",
+            duration: 3000,
         });
 
     } catch (error) {
@@ -154,7 +165,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
                 className={cn(
                   "flex h-full flex-col items-center justify-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary",
                   pathname === item.href && "text-primary",
-                   !sessionEstablished && item.href !== '/dashboard/pengguna' && "pointer-events-none opacity-50"
+                   !sessionEstablished && "pointer-events-none opacity-50"
                 )}
               >
                 <item.icon className="h-5 w-5" />
@@ -165,7 +176,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
         </nav>
       </div>
 
-      <Dialog open={isSessionDialogOpen}>
+      <Dialog open={isSessionDialogOpen && !sessionEstablished}>
         <DialogContent className="sm:max-w-[425px]" hideCloseButton>
           <DialogHeader>
             <DialogTitle>Mulai Sesi Kerja</DialogTitle>
