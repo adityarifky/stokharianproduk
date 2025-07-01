@@ -177,26 +177,26 @@ export function UpdateClient() {
              <Loader2 className="h-8 w-8 animate-spin text-primary" />
            </div>
         ) : filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
             {filteredProducts.map((product) => (
               <Card key={product.id} className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105 flex flex-col overflow-hidden">
                 <CardHeader className="p-0">
-                  <div className="relative aspect-video w-full">
+                  <div className="relative aspect-square w-full">
                     <Image src={product.image || 'https://placehold.co/600x400.png'} alt={product.name} fill className="object-cover" data-ai-hint="pastry dreampuff"/>
                   </div>
                 </CardHeader>
-                <CardContent className="flex-1 p-4 pb-2">
-                  <CardTitle className="text-lg leading-tight mb-1">{product.name}</CardTitle>
-                  <p className="text-sm text-muted-foreground">Stok tersedia: <span className="font-bold text-foreground">{product.stock}</span></p>
+                <CardContent className="flex-1 p-3">
+                  <CardTitle className="text-base leading-tight mb-1 truncate">{product.name}</CardTitle>
+                  <p className="text-xs text-muted-foreground">Stok: <span className="font-bold text-foreground">{product.stock}</span></p>
                 </CardContent>
-                <CardFooter className="flex justify-center items-center gap-4 p-4 pt-0">
-                    <Button variant="outline" size="icon" onClick={() => handleQuantityChange(product, -1)} disabled={isSaving || (pendingChanges.get(product.id) || 0) <= 0}>
+                <CardFooter className="flex justify-center items-center gap-3 p-3 pt-0">
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleQuantityChange(product, -1)} disabled={isSaving || (pendingChanges.get(product.id) || 0) <= 0}>
                         <Plus className="h-4 w-4" />
                     </Button>
-                    <div className="text-2xl font-bold w-12 text-center">
+                    <div className="text-xl font-bold w-10 text-center">
                         {pendingChanges.get(product.id) || 0}
                     </div>
-                    <Button variant="outline" size="icon" onClick={() => handleQuantityChange(product, 1)} disabled={isSaving || product.stock <= (pendingChanges.get(product.id) || 0)}>
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleQuantityChange(product, 1)} disabled={isSaving || product.stock <= (pendingChanges.get(product.id) || 0)}>
                         <Minus className="h-4 w-4" />
                     </Button>
                 </CardFooter>
