@@ -38,25 +38,35 @@ export function useBrowserNotifications() {
   }, [toast]);
   
   const sendNotification = useCallback((title: string, options?: NotificationOptions) => {
-    if (!("Notification" in window)) {
+    if (!("Notification" in window) || !navigator.serviceWorker) {
+      console.log('Browser tidak mendukung notifikasi atau service worker.');
       return;
     }
 
     if (Notification.permission === "granted") {
-      const notification = new Notification(title, {
-        body: options?.body,
-        icon: "/Logo%20Dreampuff.png", // Menggunakan logo aplikasi
-        ...options,
-      });
-      // Tambahkan event listener jika perlu, misalnya onClick
-      notification.onclick = () => {
-        window.focus(); // Bawa window ke depan saat notifikasi diklik
-      };
+      navigator.serviceWorker.ready
+        .then((registration) => {
+          registration.showNotification(title, {
+            body: options?.body,
+            icon: "/Logo%20Dreampuff.png", // Menggunakan logo aplikasi
+            ...options,
+          });
+        })
+        .catch((err) => {
+          console.error('Gagal menampilkan notifikasi via Service Worker:', err);
+          // The error message suggests using the service worker, so a fallback is not ideal.
+          // Instead, we inform the user that something is wrong.
+          toast({
+              variant: 'destructive',
+              title: 'Gagal Mengirim Notifikasi',
+              description: 'Terjadi masalah teknis. Coba muat ulang halaman.'
+          })
+        });
     } else if (Notification.permission === 'default') {
         // Minta izin jika belum ditentukan
         requestNotificationPermission();
     }
-  }, [requestNotificationPermission]);
+  }, [requestNotificationPermission, toast]);
 
   // Secara otomatis meminta izin saat hook digunakan
   useEffect(() => {
