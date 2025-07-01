@@ -46,6 +46,7 @@ export default function DashboardLayout({
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [isSessionDialogOpen, setIsSessionDialogOpen] = useState(false);
+  const [sessionEstablished, setSessionEstablished] = useState(false);
   const [isSubmittingSession, setIsSubmittingSession] = useState(false);
 
   const sessionForm = useForm<z.infer<typeof sessionFormSchema>>({
@@ -57,18 +58,16 @@ export default function DashboardLayout({
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
         router.push("/");
-        sessionStorage.removeItem('sessionUser');
       } else {
         setLoading(false);
-        const storedUser = sessionStorage.getItem('sessionUser');
-        if (!storedUser) {
+        if (!sessionEstablished) {
           setIsSessionDialogOpen(true);
         }
       }
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, [router, sessionEstablished]);
 
   const menuItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -89,7 +88,7 @@ export default function DashboardLayout({
             status: 'active'
         });
 
-        sessionStorage.setItem('sessionUser', values.name);
+        setSessionEstablished(true);
         setIsSessionDialogOpen(false);
         sessionForm.reset();
         
