@@ -1,6 +1,6 @@
 'use client';
 
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import Image from 'next/image';
 
 interface ImagePreviewDialogProps {
@@ -13,6 +13,10 @@ export function ImagePreviewDialog({ imageUrl, imageAlt = "Pratinjau Gambar", on
   return (
     <Dialog open={!!imageUrl} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl w-auto p-0 bg-transparent border-0 shadow-none">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Pratinjau Gambar</DialogTitle>
+          <DialogDescription>{imageAlt}</DialogDescription>
+        </DialogHeader>
         <div className="relative">
           <Image
             src={imageUrl!}
