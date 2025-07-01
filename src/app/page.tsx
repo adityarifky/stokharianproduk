@@ -38,7 +38,7 @@ export default function LoginPage() {
                   </p>
               </div>
           </div>
-          <Button onClick={() => setShowPopup(false)} className="w-full">
+          <Button onClick={() => setShowPopup(false)} className="w-full" suppressHydrationWarning>
             PASTI!
           </Button>
         </div>
