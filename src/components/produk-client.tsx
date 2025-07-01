@@ -452,9 +452,9 @@ export function ProdukClient() {
           <Card>
             <CardHeader className="flex flex-row justify-between items-start">
               <div>
-                <CardTitle>Update Stok Awal / Reset</CardTitle>
+                <CardTitle>Update Stok Produk / Reset</CardTitle>
                 <CardDescription>
-                  Gunakan formulir ini untuk mengatur stok awal produk satu per satu.
+                  Gunakan formulir ini untuk mengatur stok produk satu per satu atau mereset semua stok.
                 </CardDescription>
               </div>
               <Button variant="destructive" onClick={() => setIsResetDialogOpen(true)} disabled={isLoading || products.length === 0}>
@@ -857,5 +857,4 @@ export function ProdukClient() {
       </AlertDialog>
     </div>
   );
-
-    
+}
