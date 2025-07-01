@@ -45,7 +45,7 @@ export function DashboardClient() {
       toast({
         variant: "destructive",
         title: "Gagal Memuat Data",
-        description: "Tidak dapat terhubung ke database. Coba muat ulang halaman.",
+        description: `Gagal memuat produk. Error: ${error.code}. Pastikan aturan Firestore sudah benar.`,
       });
     });
 

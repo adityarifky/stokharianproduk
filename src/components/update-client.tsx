@@ -65,7 +65,7 @@ export function UpdateClient() {
       toast({
         variant: "destructive",
         title: "Gagal Memuat Data",
-        description: "Tidak dapat terhubung ke database. Coba muat ulang halaman.",
+        description: `Gagal memuat produk. Error: ${error.code}. Pastikan aturan Firestore sudah benar.`,
       });
     });
 
@@ -130,11 +130,11 @@ export function UpdateClient() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="shrink-0 border-b p-4 md:p-8">
-        <h1 className="text-2xl font-bold tracking-tight mb-4">Update Produk</h1>
-        <p className="text-muted-foreground mb-4">Catat semua perubahan produk secara realtime.</p>
-        <div className="w-full overflow-x-auto">
-          <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
+      <div className="flex-none border-b bg-background p-4 md:p-6">
+        <h1 className="text-2xl font-bold tracking-tight">Update Produk</h1>
+        <p className="text-muted-foreground">Catat semua perubahan produk secara realtime.</p>
+        <div className="mt-4 w-full overflow-x-auto pb-2">
+          <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full min-w-max">
             <TabsList>
               {categories.map((category) => (
                 <TabsTrigger key={category} value={category}>{category}</TabsTrigger>
@@ -144,21 +144,21 @@ export function UpdateClient() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 md:p-8">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6">
         {filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {filteredProducts.map((product) => (
-              <Card key={product.id} className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105 flex flex-col">
-                <CardHeader className="p-4">
-                  <div className="relative aspect-[4/3] w-full overflow-hidden rounded-md">
+              <Card key={product.id} className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105 flex flex-col overflow-hidden">
+                <CardHeader className="p-0">
+                  <div className="relative aspect-video w-full">
                     <Image src={product.image || 'https://placehold.co/600x400.png'} alt={product.name} fill className="object-cover" data-ai-hint="pastry dreampuff"/>
                   </div>
                 </CardHeader>
-                <CardContent className="flex-1 px-4 pb-4">
-                  <CardTitle className="text-lg mb-1">{product.name}</CardTitle>
+                <CardContent className="flex-1 p-4">
+                  <CardTitle className="text-lg leading-tight mb-1">{product.name}</CardTitle>
                   <p className="text-sm text-muted-foreground">Stok saat ini: <span className="font-bold text-foreground">{product.stock}</span></p>
                 </CardContent>
-                <CardFooter className="flex justify-between gap-2 px-4 pb-4 pt-0">
+                <CardFooter className="flex justify-between gap-2 p-4 pt-0">
                   <Button variant="outline" className="w-full" onClick={() => openUpdateDialog(product, "subtract")}>
                     <Minus className="mr-2 h-4 w-4" />
                     Kurangi
@@ -172,7 +172,7 @@ export function UpdateClient() {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center text-center h-64 border-2 border-dashed rounded-lg">
+          <div className="flex flex-col items-center justify-center text-center h-full">
             <p className="text-lg font-semibold">Tidak Ada Produk</p>
             <p className="text-muted-foreground">Tidak ada produk yang ditemukan dalam kategori '{selectedCategory}'.</p>
           </div>
