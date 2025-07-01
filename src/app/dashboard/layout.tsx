@@ -220,10 +220,9 @@ function InnerLayout({ children }: { children: ReactNode }) {
                 />
             </Link>
             <div className="flex items-center gap-2">
-                <div className="flex-1 justify-center items-center px-4">
                 {motivationalQuote && (
                     <div key={motivationalQuote} className="relative animate-fade-in-out">
-                      <div className="bg-muted text-muted-foreground rounded-lg px-3 py-1.5 text-xs shadow font-headline">
+                      <div className="max-w-[150px] truncate rounded-lg bg-muted px-3 py-1.5 text-xs text-muted-foreground shadow font-headline sm:max-w-none sm:whitespace-normal">
                         {motivationalQuote}
                       </div>
                       <div className="absolute top-1/2 -mt-2 -right-2 h-0 w-0
@@ -233,7 +232,6 @@ function InnerLayout({ children }: { children: ReactNode }) {
                       />
                     </div>
                 )}
-              </div>
               <UserNav />
             </div>
         </header>
@@ -250,13 +248,13 @@ function InnerLayout({ children }: { children: ReactNode }) {
         </main>
         
         <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background p-1">
-            <div className="flex w-full items-center justify-around">
+            <div className="grid w-full grid-cols-6">
                  {menuItems.map((item) => (
                     <Link
                         key={item.label}
                         href={item.href}
                         className={cn(
-                            "flex flex-col items-center gap-1 rounded-lg p-2 text-muted-foreground",
+                            "flex flex-col items-center justify-center gap-1 rounded-lg p-2 text-muted-foreground",
                             (pathname.startsWith(item.href) && (item.href !== "/dashboard" || pathname === "/dashboard"))
                             ? "bg-muted font-medium text-primary"
                             : "hover:text-primary",
