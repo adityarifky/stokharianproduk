@@ -204,8 +204,7 @@ export function LaporanClient() {
         <p className="text-muted-foreground font-serif">Ringkasan penjualan dan sisa stok setelah reset harian.</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
-        {/* Reports List Section */}
+      <div className="flex-1 p-4 md:p-8 space-y-8">
         <div>
           {loading ? (
               <div className="flex h-64 w-full items-center justify-center">
@@ -254,7 +253,6 @@ export function LaporanClient() {
           )}
         </div>
 
-        {/* Accumulation Section */}
         <Card>
           <CardHeader>
             <CardTitle>Laporan Akumulasi</CardTitle>

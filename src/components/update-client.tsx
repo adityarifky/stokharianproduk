@@ -212,7 +212,7 @@ export function UpdateClient() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-24">
+      <div className="flex-1 p-4 md:p-6 pb-24">
         {loading ? (
            <div className="flex h-full w-full items-center justify-center">
              <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -257,9 +257,9 @@ export function UpdateClient() {
       </div>
 
       {totalPending > 0 && (
-        <div className="fixed bottom-16 left-0 right-0 z-10 p-4 md:bottom-0">
+        <div className="fixed bottom-0 left-0 right-0 z-10 border-t bg-background/95 p-4 backdrop-blur-sm">
             <div className="max-w-md mx-auto">
-                <Button onClick={handleSave} disabled={isSaving} size="lg" className="w-full text-lg shadow-lg">
+                <Button onClick={handleSave} disabled={isSaving} size="lg" className="w-full text-base shadow-lg">
                     {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
                     Simpan {totalPending} Produk Terjual
                 </Button>

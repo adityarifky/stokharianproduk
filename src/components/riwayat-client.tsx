@@ -238,7 +238,7 @@ export function RiwayatClient() {
           </Popover>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto p-4 md:p-8">
+      <div className="flex-1 p-4 md:p-8">
         {loading ? (
           <div className="flex h-full min-h-[400px] w-full items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -256,7 +256,7 @@ export function RiwayatClient() {
                 })}
             </div>
         ) : (
-             <div className="flex h-full min-h-[400px] w-full items-center justify-center">
+             <div className="flex h-full min-h-[400px] w-full items-center justify-center rounded-lg border border-dashed">
                 <div className="text-center">
                     <p className="text-lg font-semibold">{date?.from ? "Tidak Ada Riwayat" : "Belum Ada Riwayat"}</p>
                     <p className="text-muted-foreground font-serif">

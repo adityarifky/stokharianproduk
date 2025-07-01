@@ -598,10 +598,10 @@ export function ProdukClient() {
         <h1 className="text-2xl font-bold tracking-tight font-headline">Manajemen Produk</h1>
         <p className="text-muted-foreground font-serif">Kelola daftar produk dan atur stok secara manual di halaman ini.</p>
       </div>
-      <div className="flex-1 overflow-y-auto p-4 md:p-8">
+      <div className="flex-1 p-4 md:p-8">
         <div className="grid gap-8">
           <Card>
-            <CardHeader className="flex flex-row justify-between items-start">
+            <CardHeader className="flex flex-col md:flex-row justify-between items-start gap-4">
               <div>
                 <CardTitle>Update Stok Produk / Reset</CardTitle>
                 <CardDescription>
@@ -674,7 +674,7 @@ export function ProdukClient() {
           
           <Card>
             <CardHeader>
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                 <div>
                   <CardTitle>Daftar Produk</CardTitle>
                   <CardDescription>Kelola semua produk yang terdaftar di dalam stok.</CardDescription>

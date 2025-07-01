@@ -217,7 +217,7 @@ export function DashboardClient() {
         <h1 className="text-2xl font-bold tracking-tight font-headline">Dashboard</h1>
         <p className="text-muted-foreground font-serif">Ringkasan stok produk harian Anda.</p>
       </div>
-      <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
+      <div className="flex-1 p-4 md:p-8 space-y-8">
         {loading ? (
             <div className="flex h-64 w-full items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
