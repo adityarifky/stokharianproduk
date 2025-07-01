@@ -108,6 +108,7 @@ export function LoginForm() {
                   className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
                   aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
                   disabled={isLoading}
+                  suppressHydrationWarning
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4" />
