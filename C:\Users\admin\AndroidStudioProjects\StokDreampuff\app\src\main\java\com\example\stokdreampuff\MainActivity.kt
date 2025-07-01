@@ -18,7 +18,7 @@ class MainActivity : AppCompatActivity() {
         // Baris ini mengaktifkan JavaScript, wajib agar React bisa berjalan
         myWebView.settings.javaScriptEnabled = true
 
-        // Memuat URL aplikasi web dari URL dasar
+        // URL aplikasi web-mu yang sudah di-deploy
         myWebView.loadUrl("https://stokharianproduk.vercel.app/")
     }
 }
