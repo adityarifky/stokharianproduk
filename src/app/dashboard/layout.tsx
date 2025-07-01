@@ -22,17 +22,6 @@ import * as z from "zod";
 
 import { auth, db } from "@/lib/firebase";
 import { UserNav } from "@/components/user-nav";
-import {
-  SidebarProvider,
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarFooter,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -40,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SessionProvider, useSession } from "@/context/SessionContext";
+import { cn } from "@/lib/utils";
 
 const sessionFormSchema = z.object({
   name: z.string().min(1, "Nama harus diisi."),
@@ -174,60 +164,40 @@ function InnerLayout({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <SidebarProvider>
-        <Sidebar collapsible="icon">
-          <SidebarHeader>
-            <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold group-data-[collapsible=icon]:hidden">
-                <Image
-                  src="/Logo%20Dreampuff.png"
-                  alt="Dreampuff Logo"
-                  width={140}
-                  height={32}
-                  priority
-                  data-ai-hint="company logo"
-                />
-            </Link>
-             <Link href="/dashboard" className="hidden items-center gap-2 text-lg font-semibold group-data-[collapsible=icon]:flex">
-                <Image
-                  src="/Logo%20Dreampuff.png"
-                  alt="Dreampuff Logo"
-                  width={32}
-                  height={32}
-                  priority
-                  data-ai-hint="company logo"
-                  className='rounded-md'
-                />
-             </Link>
-          </SidebarHeader>
-          <SidebarContent>
-            <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.label}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname.startsWith(item.href) && (item.href !== "/dashboard" || pathname === "/dashboard")}
-                    disabled={!sessionEstablished}
-                    tooltip={{ children: item.label }}
-                  >
-                    <Link href={item.href}>
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarContent>
-          <SidebarFooter className="hidden md:flex">
-            <UserNav />
-          </SidebarFooter>
-        </Sidebar>
-
-        <div className="flex w-full flex-col">
-          <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-4 md:px-6">
+      <div className="flex min-h-screen w-full flex-col bg-muted/40">
+        <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-4 md:px-6">
+            <div className="flex items-center gap-4">
+                 <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold">
+                    <Image
+                      src="/Logo%20Dreampuff.png"
+                      alt="Dreampuff Logo"
+                      width={32}
+                      height={32}
+                      priority
+                      data-ai-hint="company logo"
+                      className='rounded-md'
+                    />
+                     <span className="hidden md:inline-block font-headline">Dreampuff</span>
+                </Link>
+                <nav className="hidden flex-row items-center gap-5 text-sm font-medium md:flex lg:gap-6">
+                    {menuItems.map(item => (
+                        <Link 
+                            key={item.label} 
+                            href={item.href} 
+                            className={cn(
+                                "transition-colors hover:text-foreground",
+                                (pathname.startsWith(item.href) && (item.href !== "/dashboard" || pathname === "/dashboard")) ? "text-foreground font-semibold" : "text-muted-foreground",
+                                !sessionEstablished && "pointer-events-none opacity-50"
+                            )}
+                            aria-disabled={!sessionEstablished}
+                        >
+                            {item.label}
+                        </Link>
+                    ))}
+                </nav>
+            </div>
             <div className="flex items-center gap-2">
-              <SidebarTrigger className="md:hidden" />
-              <div className="hidden flex-1 justify-center items-center px-4 md:flex">
+                <div className="hidden flex-1 justify-center items-center px-4 md:flex">
                 {motivationalQuote && (
                     <div key={motivationalQuote} className="relative animate-fade-in-out">
                       <div className="bg-muted text-muted-foreground rounded-lg px-3 py-1.5 text-xs shadow font-headline">
@@ -241,24 +211,44 @@ function InnerLayout({ children }: { children: ReactNode }) {
                     </div>
                 )}
               </div>
+              <UserNav />
             </div>
-             <div className="md:hidden">
-                <UserNav />
-            </div>
-          </header>
-          
-          <main className="flex-1 overflow-y-auto bg-muted/40">
-            {sessionEstablished ? children : (
-              <div className="flex h-full w-full items-center justify-center p-4 text-center">
-                <div className="flex flex-col items-center gap-2">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <p className="text-muted-foreground font-serif">Menunggu sesi kerja dimulai...</p>
-                </div>
+        </header>
+
+        <main className="flex-1 bg-muted/40 pb-24 md:pb-0">
+          {sessionEstablished ? children : (
+            <div className="flex h-full w-full items-center justify-center p-4 text-center">
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-muted-foreground font-serif">Menunggu sesi kerja dimulai...</p>
               </div>
-            )}
-          </main>
-        </div>
-      </SidebarProvider>
+            </div>
+          )}
+        </main>
+        
+        <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background p-1 md:hidden">
+            <div className="grid grid-cols-6 gap-1">
+                 {menuItems.map((item) => (
+                    <Link
+                        key={item.label}
+                        href={item.href}
+                        className={cn(
+                            "flex flex-col items-center gap-1 rounded-lg p-2 text-muted-foreground",
+                            (pathname.startsWith(item.href) && (item.href !== "/dashboard" || pathname === "/dashboard"))
+                            ? "bg-muted font-medium text-primary"
+                            : "hover:text-primary",
+                            !sessionEstablished && "pointer-events-none opacity-50"
+                        )}
+                        aria-disabled={!sessionEstablished}
+                    >
+                        <item.icon className="h-5 w-5" />
+                        <span className="text-xs">{item.label === 'Update Produk' ? 'Update' : item.label}</span>
+                    </Link>
+                ))}
+            </div>
+        </nav>
+      </div>
+
       <Dialog open={isSessionDialogOpen} onOpenChange={setIsSessionDialogOpen}>
         <DialogContent className="sm:max-w-[425px]" hideCloseButton>
           <DialogHeader>

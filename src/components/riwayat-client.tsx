@@ -192,7 +192,7 @@ export function RiwayatClient() {
 
   return (
     <>
-    <div className="flex h-full flex-col">
+    <div className="flex flex-col">
        <div className="flex-none border-b bg-background p-4 md:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -240,7 +240,7 @@ export function RiwayatClient() {
       </div>
       <div className="flex-1 p-4 md:p-8">
         {loading ? (
-          <div className="flex h-full min-h-[400px] w-full items-center justify-center">
+          <div className="flex min-h-[400px] w-full items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : combinedHistory.length > 0 ? (
@@ -256,7 +256,7 @@ export function RiwayatClient() {
                 })}
             </div>
         ) : (
-             <div className="flex h-full min-h-[400px] w-full items-center justify-center rounded-lg border border-dashed">
+             <div className="flex min-h-[400px] w-full items-center justify-center rounded-lg border border-dashed">
                 <div className="text-center">
                     <p className="text-lg font-semibold">{date?.from ? "Tidak Ada Riwayat" : "Belum Ada Riwayat"}</p>
                     <p className="text-muted-foreground font-serif">

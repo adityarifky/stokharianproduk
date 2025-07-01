@@ -212,7 +212,7 @@ export function DashboardClient() {
   }, []);
   
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex flex-col">
        <div className="flex-none border-b bg-background p-4 md:p-6">
         <h1 className="text-2xl font-bold tracking-tight font-headline">Dashboard</h1>
         <p className="text-muted-foreground font-serif">Ringkasan stok produk harian Anda.</p>
