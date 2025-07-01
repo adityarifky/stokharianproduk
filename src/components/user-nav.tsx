@@ -90,6 +90,7 @@ export function UserNav() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
+      localStorage.removeItem('lastSessionStart');
       setSessionEstablished(false);
       setSessionInfo(null);
       router.push("/");

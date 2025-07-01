@@ -14,7 +14,7 @@ import {
   Users,
   Croissant,
 } from "lucide-react";
-import { onAuthStateChanged, type User } from "firebase/auth";
+import { onAuthStateChanged, type User, signOut } from "firebase/auth";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -72,12 +72,49 @@ function InnerLayout({ children }: { children: ReactNode }) {
       if (!currentUser) {
         router.push("/");
       } else {
+        const lastSessionStartStr = localStorage.getItem('lastSessionStart');
+        if (!lastSessionStartStr) {
+          signOut(auth).then(() => {
+              router.push("/");
+              toast({
+                  title: "Sesi Tidak Valid",
+                  description: "Silakan masuk kembali untuk memulai sesi baru.",
+              });
+          });
+          return;
+        }
+
+        const lastSessionStart = new Date(lastSessionStartStr);
+        const now = new Date();
+        
+        const lastReset = new Date();
+        lastReset.setHours(4, 0, 0, 0);
+
+        if (now < lastReset) {
+          lastReset.setDate(lastReset.getDate() - 1);
+        }
+        
+        if (lastSessionStart < lastReset) {
+          signOut(auth).then(() => {
+            localStorage.removeItem('lastSessionStart');
+            setSessionEstablished(false);
+            setSessionInfo(null);
+            toast({
+                title: "Sesi Berakhir",
+                description: "Sesi kerja harian Anda telah berakhir. Silakan masuk kembali.",
+                duration: 5000,
+            });
+            router.push("/");
+          });
+          return;
+        }
+
         setUser(currentUser);
         setLoading(false);
       }
     });
     return () => unsubscribe();
-  }, [router]);
+  }, [router, toast, setSessionEstablished, setSessionInfo]);
   
   useEffect(() => {
     if (user && !sessionEstablished) {

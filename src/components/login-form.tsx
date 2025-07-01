@@ -43,6 +43,7 @@ export function LoginForm() {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);
+      localStorage.setItem('lastSessionStart', new Date().toISOString());
       router.push("/dashboard");
     } catch (error) {
       toast({
