@@ -15,3 +15,21 @@ export interface UserSession {
   loginTime: Timestamp;
   status: "active" | "inactive";
 }
+
+export interface SaleHistoryItem {
+  productId: string;
+  productName: string;
+  quantity: number;
+  image: string;
+}
+
+export interface SaleHistory {
+  id: string;
+  timestamp: Timestamp;
+  session: {
+    name: string;
+    position: string;
+  };
+  items: SaleHistoryItem[];
+  totalItems: number;
+}

@@ -40,7 +40,7 @@ const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, rej
 
 export function UserNav() {
   const router = useRouter();
-  const { sessionEstablished, setSessionEstablished } = useSession();
+  const { sessionEstablished, setSessionEstablished, setSessionInfo } = useSession();
   const [user, setUser] = useState<User | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
@@ -69,7 +69,6 @@ export function UserNav() {
             }
           }, (error) => {
              console.error("Failed to fetch user profile:", error);
-             // Fallback to auth profile URL on error to avoid broken image
              setAvatarUrl(currentUser.photoURL || null);
           });
         } else {
@@ -90,6 +89,7 @@ export function UserNav() {
     try {
       await signOut(auth);
       setSessionEstablished(false);
+      setSessionInfo(null);
       router.push("/");
     } catch (error) {
       console.error("Logout error:", error);

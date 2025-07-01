@@ -45,7 +45,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [isSessionDialogOpen, setIsSessionDialogOpen] = useState(false);
-  const { sessionEstablished, setSessionEstablished } = useSession();
+  const { sessionEstablished, setSessionEstablished, setSessionInfo } = useSession();
   const [isSubmittingSession, setIsSubmittingSession] = useState(false);
 
   const sessionForm = useForm<z.infer<typeof sessionFormSchema>>({
@@ -59,7 +59,6 @@ function InnerLayout({ children }: { children: ReactNode }) {
         router.push("/");
       } else {
         setUser(currentUser);
-        // Only show dialog if user is logged in but session is not yet established
         if (!sessionEstablished) {
           setIsSessionDialogOpen(true);
         }
@@ -73,7 +72,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/dashboard/update", label: "Update Produk", icon: FilePenLine },
     { href: "/dashboard/produk", label: "Produk", icon: Croissant },
-    { href: "#", label: "Riwayat", icon: History },
+    { href: "/dashboard/riwayat", label: "Riwayat", icon: History },
     { href: "#", label: "Laporan", icon: BarChart },
     { href: "/dashboard/pengguna", label: "Pengguna", icon: Users },
   ];
@@ -89,7 +88,8 @@ function InnerLayout({ children }: { children: ReactNode }) {
         });
 
         setIsSessionDialogOpen(false);
-        setSessionEstablished(true); // This will trigger data fetching in all child components
+        setSessionInfo({ name: values.name, position: values.position });
+        setSessionEstablished(true);
         sessionForm.reset();
         
         toast({
@@ -154,7 +154,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
                 className={cn(
                   "flex h-full flex-col items-center justify-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary",
                   pathname === item.href && "text-primary",
-                   !sessionEstablished && "pointer-events-none opacity-50"
+                   !sessionEstablished && item.href !== '/dashboard/pengguna' && "pointer-events-none opacity-50"
                 )}
               >
                 <item.icon className="h-5 w-5" />
