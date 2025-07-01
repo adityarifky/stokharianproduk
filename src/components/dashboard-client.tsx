@@ -13,6 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Cookie, CakeSlice, Layers, CupSoda, Box, MoreHorizontal } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useSession } from "@/context/SessionContext";
 
 export function DashboardClient() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -27,8 +28,14 @@ export function DashboardClient() {
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState("");
   const { toast } = useToast();
+  const { sessionEstablished } = useSession();
 
   useEffect(() => {
+    if (!sessionEstablished) {
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
     const q = query(collection(db, "products"));
 
@@ -58,7 +65,7 @@ export function DashboardClient() {
     });
 
     return () => unsubscribe();
-  }, [toast]);
+  }, [toast, sessionEstablished]);
 
   useEffect(() => {
     const counts = {
@@ -71,7 +78,7 @@ export function DashboardClient() {
     };
     products.forEach(product => {
       if (product.category in counts) {
-        counts[product.category]++;
+        counts[product.category as keyof typeof counts]++;
       }
     });
     setCategoryCounts(counts);
@@ -97,7 +104,7 @@ export function DashboardClient() {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mb-8">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mb-8 p-4 md:p-8">
       <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Creampuff</CardTitle>

@@ -59,6 +59,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { useSession } from '@/context/SessionContext';
 
 const addProductSchema = z.object({
   name: z.string().min(1, { message: "Nama produk harus diisi." }),
@@ -118,6 +119,7 @@ export function ProdukClient() {
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+  const { sessionEstablished } = useSession();
   
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [crop, setCrop] = useState<Crop>();
@@ -152,6 +154,11 @@ export function ProdukClient() {
   });
 
   useEffect(() => {
+    if (!sessionEstablished) {
+      setLoadingProducts(false);
+      return;
+    }
+
     setLoadingProducts(true);
     const q = query(collection(db, "products"));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -182,7 +189,7 @@ export function ProdukClient() {
     return () => {
       unsubscribe();
     }
-  }, [toast]);
+  }, [toast, sessionEstablished]);
   
   async function getCroppedImg(
     image: HTMLImageElement,

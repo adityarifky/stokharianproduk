@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -16,13 +17,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useSession } from "@/context/SessionContext";
 
 export function PenggunaClient() {
   const { toast } = useToast();
   const [sessions, setSessions] = useState<UserSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const { sessionEstablished } = useSession();
 
   useEffect(() => {
+    if (!sessionEstablished) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     const q = query(collection(db, "user_sessions"), orderBy("loginTime", "desc"));
     
@@ -52,7 +60,7 @@ export function PenggunaClient() {
     });
 
     return () => unsubscribe();
-  }, [toast]);
+  }, [toast, sessionEstablished]);
 
   const formatDate = (timestamp: any) => {
     if (!timestamp) return "N/A";

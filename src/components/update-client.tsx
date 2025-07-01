@@ -24,6 +24,7 @@ import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
+import { useSession } from "@/context/SessionContext";
 
 const updateStockSchema = z.object({
   amount: z.coerce.number().int().min(1, { message: "Jumlah minimal 1" }),
@@ -40,6 +41,7 @@ export function UpdateClient() {
   const [updateAction, setUpdateAction] = useState<"add" | "subtract">("add");
   const [selectedCategory, setSelectedCategory] = useState("Semua");
   const { toast } = useToast();
+  const { sessionEstablished } = useSession();
 
   const {
     register: registerUpdate,
@@ -49,6 +51,11 @@ export function UpdateClient() {
   } = useForm<UpdateStockForm>({ resolver: zodResolver(updateStockSchema) });
 
   useEffect(() => {
+    if (!sessionEstablished) {
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
     const q = query(collection(db, "products"));
 
@@ -78,7 +85,7 @@ export function UpdateClient() {
     });
 
     return () => unsubscribe();
-  }, [toast]);
+  }, [toast, sessionEstablished]);
 
   const openUpdateDialog = (product: Product, action: "add" | "subtract") => {
     setSelectedProduct(product);

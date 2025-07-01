@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
@@ -27,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { LogOut, User as UserIcon, Loader2, Camera } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
+import { useSession } from '@/context/SessionContext';
 
 // Helper to convert file to Data URI
 const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, reject) => {
@@ -36,8 +38,9 @@ const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, rej
   reader.readAsDataURL(file);
 });
 
-export function UserNav({ sessionEstablished }: { sessionEstablished: boolean }) {
+export function UserNav() {
   const router = useRouter();
+  const { sessionEstablished, setSessionEstablished } = useSession();
   const [user, setUser] = useState<User | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
@@ -53,29 +56,26 @@ export function UserNav({ sessionEstablished }: { sessionEstablished: boolean })
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       
-      // Always clean up the previous profile listener when auth state changes or effect re-runs.
       unsubscribeProfile();
 
       if (currentUser) {
-        // Only set up the Firestore listener if the user is logged in AND the session is established.
-        // This prevents the permission-denied error on initial load.
         if (sessionEstablished) {
           const profileDocRef = doc(db, "userProfiles", currentUser.uid);
           unsubscribeProfile = onSnapshot(profileDocRef, (docSnap) => {
             if (docSnap.exists() && docSnap.data().photoURL) {
               setAvatarUrl(docSnap.data().photoURL);
             } else {
-              // Fallback to the URL from the auth profile if one was ever set
               setAvatarUrl(currentUser.photoURL || null);
             }
+          }, (error) => {
+             console.error("Failed to fetch user profile:", error);
+             // Fallback to auth profile URL on error to avoid broken image
+             setAvatarUrl(currentUser.photoURL || null);
           });
         } else {
-           // If the session isn't established, just use the auth photoURL as a temporary fallback.
-           // Do NOT query Firestore yet.
           setAvatarUrl(currentUser.photoURL || null);
         }
       } else {
-        // No user, clear avatar
         setAvatarUrl(null);
       }
     });
@@ -84,11 +84,12 @@ export function UserNav({ sessionEstablished }: { sessionEstablished: boolean })
       unsubscribeAuth();
       unsubscribeProfile();
     };
-  }, [sessionEstablished]); // Re-run effect when session is established to fetch profile
+  }, [sessionEstablished]);
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
+      setSessionEstablished(false);
       router.push("/");
     } catch (error) {
       console.error("Logout error:", error);
@@ -117,7 +118,6 @@ export function UserNav({ sessionEstablished }: { sessionEstablished: boolean })
     setIsUploading(true);
     try {
       const photoDataUri = await fileToDataUri(selectedFile);
-      // Save the Data URI to a document in Firestore instead of the auth profile
       const profileDocRef = doc(db, "userProfiles", user.uid);
       await setDoc(profileDocRef, { photoURL: photoDataUri }, { merge: true });
 
@@ -142,7 +142,6 @@ export function UserNav({ sessionEstablished }: { sessionEstablished: boolean })
   
   const openDialog = () => {
     setIsProfileDialogOpen(true);
-    // Initialize the dialog preview with the current definitive avatar
     setPreviewUrl(avatarUrl);
     setSelectedFile(null);
   }
@@ -151,7 +150,7 @@ export function UserNav({ sessionEstablished }: { sessionEstablished: boolean })
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+          <Button variant="ghost" className="relative h-8 w-8 rounded-full" disabled={!sessionEstablished}>
             <Avatar className="h-9 w-9">
               <AvatarImage src={avatarUrl || "https://placehold.co/100x100.png"} alt="@pengguna" data-ai-hint="user avatar" />
               <AvatarFallback>

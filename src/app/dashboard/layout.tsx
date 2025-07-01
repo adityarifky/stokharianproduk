@@ -29,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SessionProvider, useSession } from "@/context/SessionContext";
 
 const sessionFormSchema = z.object({
   name: z.string().min(1, "Nama harus diisi."),
@@ -37,18 +38,14 @@ const sessionFormSchema = z.object({
   }),
 });
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: ReactNode;
-}) {
+function InnerLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [isSessionDialogOpen, setIsSessionDialogOpen] = useState(false);
-  const [sessionEstablished, setSessionEstablished] = useState(false);
+  const { sessionEstablished, setSessionEstablished } = useSession();
   const [isSubmittingSession, setIsSubmittingSession] = useState(false);
 
   const sessionForm = useForm<z.infer<typeof sessionFormSchema>>({
@@ -56,27 +53,21 @@ export default function DashboardLayout({
     defaultValues: { name: "", position: undefined },
   });
 
-  // Effect 1: Handle Auth State. Runs once to check user login status.
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (!currentUser) {
         router.push("/");
       } else {
         setUser(currentUser);
+        // Only show dialog if user is logged in but session is not yet established
+        if (!sessionEstablished) {
+          setIsSessionDialogOpen(true);
+        }
         setLoading(false);
       }
     });
     return () => unsubscribe();
-  }, [router]);
-
-  // Effect 2: Handle Session Dialog. Runs only when the user is confirmed.
-  useEffect(() => {
-    // If we have a user, but the session isn't established yet, show the dialog.
-    // This logic ensures the dialog appears on every load if the session isn't established.
-    if (user && !sessionEstablished) {
-      setIsSessionDialogOpen(true);
-    }
-  }, [user, sessionEstablished]);
+  }, [router, sessionEstablished]);
 
   const menuItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -97,10 +88,8 @@ export default function DashboardLayout({
             status: 'active'
         });
 
-        // The key: these are only set AFTER a successful Firestore write.
-        // This gives the backend enough time to be ready for subsequent reads.
-        setSessionEstablished(true);
         setIsSessionDialogOpen(false);
+        setSessionEstablished(true); // This will trigger data fetching in all child components
         sessionForm.reset();
         
         toast({
@@ -142,13 +131,16 @@ export default function DashboardLayout({
               data-ai-hint="company logo"
             />
           </Link>
-          <UserNav sessionEstablished={sessionEstablished} />
+          <UserNav />
         </header>
         
-        <main className="flex-1 overflow-hidden">
+        <main className="flex-1 overflow-y-auto">
           {sessionEstablished ? children : (
             <div className="flex h-full w-full items-center justify-center p-4 text-center">
-              <p className="text-muted-foreground">Silakan mulai sesi kerja Anda untuk melihat konten.</p>
+                <div className="flex flex-col items-center gap-2">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-muted-foreground">Menunggu sesi kerja dimulai...</p>
+                </div>
             </div>
           )}
         </main>
@@ -161,7 +153,8 @@ export default function DashboardLayout({
                 href={item.href}
                 className={cn(
                   "flex h-full flex-col items-center justify-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary",
-                  pathname === item.href && "text-primary"
+                  pathname === item.href && "text-primary",
+                   !sessionEstablished && "pointer-events-none opacity-50"
                 )}
               >
                 <item.icon className="h-5 w-5" />
@@ -235,4 +228,12 @@ export default function DashboardLayout({
       </Dialog>
     </>
   );
+}
+
+export default function DashboardLayout({ children }: { children: ReactNode }) {
+  return (
+    <SessionProvider>
+      <InnerLayout>{children}</InnerLayout>
+    </SessionProvider>
+  )
 }
