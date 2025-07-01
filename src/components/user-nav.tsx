@@ -40,7 +40,7 @@ const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, rej
 
 export function UserNav() {
   const router = useRouter();
-  const { sessionEstablished, setSessionEstablished, setSessionInfo } = useSession();
+  const { sessionEstablished, setSessionEstablished, setSessionInfo, sessionInfo } = useSession();
   const [user, setUser] = useState<User | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
@@ -162,9 +162,9 @@ export function UserNav() {
         <DropdownMenuContent className="w-56" align="end" forceMount>
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">{user?.displayName || "Pengguna"}</p>
+              <p className="text-sm font-medium leading-none">{sessionInfo?.name || "Pengguna"}</p>
               <p className="text-xs leading-none text-muted-foreground">
-                {user?.email || "pengguna@dreampuff.com"}
+                {sessionInfo?.position || "Posisi"}
               </p>
             </div>
           </DropdownMenuLabel>
