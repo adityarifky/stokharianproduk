@@ -136,7 +136,11 @@ export default function DashboardLayout({
         </header>
         
         <main className="flex-1 overflow-hidden">
-          {children}
+          {sessionEstablished ? children : (
+            <div className="flex h-full w-full items-center justify-center p-4 text-center">
+              <p className="text-muted-foreground">Silakan mulai sesi kerja Anda untuk melihat konten.</p>
+            </div>
+          )}
         </main>
 
         <nav className="shrink-0 border-t bg-background">
