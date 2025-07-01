@@ -207,8 +207,16 @@ export function UpdateClient() {
       </div>
 
       <div className="flex-none border-b bg-background p-4 md:p-6">
-        <h1 className="text-2xl font-bold tracking-tight font-headline">Catat Produk Yang Sudah Terjual</h1>
-        <p className="text-muted-foreground font-serif">Kurangi stok untuk setiap produk yang laku terjual, lalu simpan.</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <h1 className="text-2xl font-bold tracking-tight font-headline">Catat Produk Yang Sudah Terjual</h1>
+                <p className="text-muted-foreground font-serif">Kurangi stok untuk setiap produk yang laku terjual, lalu simpan.</p>
+            </div>
+            <Button onClick={handleSave} disabled={isSaving || totalPending === 0} className="w-full sm:w-auto">
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Simpan {totalPending > 0 ? `Perubahan (${totalPending})` : 'Perubahan'}
+            </Button>
+        </div>
         <div className="mt-4 w-full overflow-x-auto pb-2">
           <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full min-w-max">
             <TabsList>
@@ -263,26 +271,6 @@ export function UpdateClient() {
           </div>
         )}
       </div>
-
-      {totalPending > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-10 border-t bg-background/95 p-4 backdrop-blur-sm md:hidden">
-            <div className="max-w-md mx-auto">
-                <Button onClick={handleSave} disabled={isSaving} size="lg" className="w-full text-base shadow-lg">
-                    {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
-                    Simpan {totalPending} Produk Terjual
-                </Button>
-            </div>
-        </div>
-      )}
-      
-      {totalPending > 0 && (
-        <div className="fixed bottom-4 right-6 z-10 hidden md:block">
-            <Button onClick={handleSave} disabled={isSaving} size="lg" className="text-base shadow-lg">
-                {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
-                Simpan {totalPending} Produk Terjual
-            </Button>
-        </div>
-      )}
     </div>
     <ImagePreviewDialog imageUrl={previewImageUrl} onClose={() => setPreviewImageUrl(null)} />
     </>
