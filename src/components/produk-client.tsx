@@ -450,11 +450,17 @@ export function ProdukClient() {
       <div className="flex-1 overflow-y-auto p-4 md:p-8">
         <div className="grid gap-8">
           <Card>
-            <CardHeader>
-              <CardTitle>Update Stok Awal / Reset</CardTitle>
-              <CardDescription>
-                Gunakan formulir ini untuk mengatur stok awal produk satu per satu, atau reset semua stok ke 0.
-              </CardDescription>
+            <CardHeader className="flex flex-row justify-between items-start">
+              <div>
+                <CardTitle>Update Stok Awal / Reset</CardTitle>
+                <CardDescription>
+                  Gunakan formulir ini untuk mengatur stok awal produk satu per satu.
+                </CardDescription>
+              </div>
+              <Button variant="destructive" onClick={() => setIsResetDialogOpen(true)} disabled={isLoading || products.length === 0}>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Reset Semua Stok
+              </Button>
             </CardHeader>
             <CardContent>
               <Form {...updateForm}>
@@ -513,12 +519,6 @@ export function ProdukClient() {
                 </form>
               </Form>
             </CardContent>
-            <CardFooter className="border-t pt-6 flex justify-end">
-                <Button variant="destructive" onClick={() => setIsResetDialogOpen(true)} disabled={isLoading || products.length === 0}>
-                    <RotateCcw className="mr-2 h-4 w-4" />
-                    Reset Semua Stok
-                </Button>
-            </CardFooter>
           </Card>
           
           <Card>
@@ -857,4 +857,5 @@ export function ProdukClient() {
       </AlertDialog>
     </div>
   );
-}
+
+    
