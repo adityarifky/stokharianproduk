@@ -176,11 +176,18 @@ function InnerLayout({ children }: { children: ReactNode }) {
               data-ai-hint="company logo"
             />
           </Link>
-          <div className="flex-1 text-center px-4 hidden md:block">
+          <div className="flex-1 flex justify-center items-center px-4 hidden md:block">
             {motivationalQuote && (
-                <p key={motivationalQuote} className="text-sm text-muted-foreground animate-fade-in-out">
+                <div key={motivationalQuote} className="relative animate-fade-in-out">
+                  <div className="bg-muted text-muted-foreground rounded-lg px-3 py-1.5 text-sm shadow">
                     {motivationalQuote}
-                </p>
+                  </div>
+                  <div className="absolute top-1/2 -mt-2 -right-2 w-0 h-0
+                    border-t-[8px] border-t-transparent
+                    border-l-[10px] border-l-muted
+                    border-b-[8px] border-b-transparent"
+                  />
+                </div>
             )}
           </div>
           <UserNav />
