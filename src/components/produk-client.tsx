@@ -706,7 +706,7 @@ export function ProdukClient() {
                       <TableHead>Nama Produk</TableHead>
                       <TableHead>Kategori</TableHead>
                       <TableHead className="text-right">Stok</TableHead>
-                      <TableHead className="text-center w-[120px]">Aksi</TableHead>
+                      <TableHead className="text-center">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

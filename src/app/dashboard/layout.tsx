@@ -187,11 +187,16 @@ function InnerLayout({ children }: { children: ReactNode }) {
         });
     } catch (error) {
       console.error("Session creation failed to sync with server:", error);
-      // Notify user of sync failure without blocking them.
+      // If sync fails, revert the optimistic UI changes to show the dialog again
+      setSessionEstablished(false);
+      setSessionInfo(null);
+      setIsSessionDialogOpen(true);
+
+      // Notify user of sync failure, but this time it's a blocking issue.
       toast({
         variant: "destructive",
-        title: "Gagal Sinkronisasi Sesi",
-        description: "Sesi Anda aktif, tapi gagal disimpan ke server. Periksa koneksi Anda.",
+        title: "Gagal Memulai Sesi",
+        description: "Gagal terhubung ke server. Periksa koneksi Anda dan coba lagi.",
       });
     } finally {
         setIsSubmittingSession(false);
