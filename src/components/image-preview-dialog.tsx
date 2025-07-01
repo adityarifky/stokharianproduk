@@ -17,16 +17,18 @@ export function ImagePreviewDialog({ imageUrl, imageAlt = "Pratinjau Gambar", on
           <DialogTitle>Pratinjau Gambar</DialogTitle>
           <DialogDescription>{imageAlt}</DialogDescription>
         </DialogHeader>
-        <div className="relative">
-          <Image
-            src={imageUrl!}
-            alt={imageAlt}
-            width={800}
-            height={800}
-            className="object-contain rounded-lg max-h-[85vh] w-auto"
-            data-ai-hint="image preview"
-          />
-        </div>
+        {imageUrl && (
+          <div className="relative">
+            <Image
+              src={imageUrl}
+              alt={imageAlt}
+              width={800}
+              height={800}
+              className="object-contain rounded-lg max-h-[85vh] w-auto"
+              data-ai-hint="image preview"
+            />
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
