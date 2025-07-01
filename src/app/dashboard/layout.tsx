@@ -163,6 +163,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
   const handleSessionSubmit = async (values: z.infer<typeof sessionFormSchema>) => {
     setIsSubmittingSession(true);
 
+    // Optimistic UI update
     setSessionInfo({ name: values.name, position: values.position });
     setSessionEstablished(true);
     setIsSessionDialogOpen(false);
@@ -176,6 +177,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
     
     sendNotification('Sesi Baru Dimulai', { body: `${values.name} telah memulai sesi kerja.` });
 
+    // Sync with server in the background
     try {
         await addDoc(collection(db, "user_sessions"), {
             name: values.name,
@@ -185,9 +187,8 @@ function InnerLayout({ children }: { children: ReactNode }) {
         });
     } catch (error) {
       console.error("Session creation failed to sync with server:", error);
-      setSessionEstablished(false);
-      setSessionInfo(null);
-      
+      // The session is already active locally, so we just notify the user about the sync issue.
+      // We don't need to revert the state, as that would be disruptive.
       toast({
         variant: "destructive",
         title: "Gagal Sinkronisasi Sesi",
@@ -209,8 +210,8 @@ function InnerLayout({ children }: { children: ReactNode }) {
   return (
     <>
       <div className="flex min-h-screen w-full flex-col bg-muted/40">
-        <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-4 md:px-6">
-            <Link href="/dashboard">
+        <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-background px-4">
+            <Link href="/dashboard" className="flex-shrink-0">
                 <Image
                   src="/Logo%20Dreampuff.png"
                   alt="Dreampuff Logo"
@@ -220,10 +221,10 @@ function InnerLayout({ children }: { children: ReactNode }) {
                   data-ai-hint="company logo"
                 />
             </Link>
-            <div className="flex flex-shrink items-center gap-2 min-w-0">
+            <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
                 {motivationalQuote && (
                     <div key={motivationalQuote} className="relative animate-fade-in-out flex-shrink min-w-0">
-                      <div className="max-w-[140px] truncate rounded-lg bg-muted px-3 py-1.5 text-xs text-muted-foreground shadow font-headline sm:max-w-xs md:max-w-sm lg:max-w-none lg:whitespace-normal">
+                      <div className="rounded-lg bg-muted px-2 py-1 text-xs text-muted-foreground shadow font-headline">
                         {motivationalQuote}
                       </div>
                       <div className="absolute top-1/2 -mt-2 -right-2 h-0 w-0

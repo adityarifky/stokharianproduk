@@ -215,7 +215,7 @@ export function UpdateClient() {
              <Loader2 className="h-8 w-8 animate-spin text-primary" />
            </div>
         ) : filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
             {filteredProducts.map((product) => (
               <Card key={product.id} className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105 flex flex-col overflow-hidden">
                 <CardHeader className="p-0">
