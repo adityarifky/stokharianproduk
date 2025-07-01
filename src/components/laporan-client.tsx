@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { collection, query, onSnapshot, orderBy, where, getDocs } from "firebase/firestore";
-import { Loader2, CalendarDays, TrendingUp, TrendingDown, FileSearch, Calendar as CalendarIcon } from "lucide-react";
+import { Loader2, CalendarDays, TrendingUp, TrendingDown, FileSearch, Calendar as CalendarIcon, ArrowDown } from "lucide-react";
 import Image from "next/image";
 import { format } from "date-fns";
 import { id as IndonesianLocale } from "date-fns/locale";
@@ -199,10 +199,10 @@ export function LaporanClient() {
         <p className="text-muted-foreground font-serif">Ringkasan penjualan dan sisa stok setelah reset harian.</p>
       </div>
 
-      <div className="flex flex-1 flex-col overflow-y-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
           {loading ? (
-              <div className="flex h-full w-full items-center justify-center">
+              <div className="flex h-64 w-full items-center justify-center">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
           ) : reports.length > 0 ? (
@@ -237,7 +237,7 @@ export function LaporanClient() {
                   ))}
               </div>
           ) : (
-               <div className="flex h-full w-full items-center justify-center rounded-lg border border-dashed">
+               <div className="flex h-64 w-full items-center justify-center rounded-lg border border-dashed">
                   <div className="text-center">
                       <p className="text-lg font-semibold">Belum Ada Laporan</p>
                       <p className="text-muted-foreground font-serif">
@@ -248,7 +248,7 @@ export function LaporanClient() {
           )}
         </div>
 
-        <div className="flex-none border-t bg-background p-4 md:p-8">
+        <div className="flex-none border-t bg-background p-4 md:p-6">
           <Card>
             <CardHeader>
               <CardTitle>Laporan Akumulasi</CardTitle>
