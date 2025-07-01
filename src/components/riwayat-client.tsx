@@ -69,7 +69,7 @@ export function RiwayatClient() {
     <div className="flex h-full flex-col">
        <div className="flex-none border-b bg-background p-4 md:p-6">
         <h1 className="text-2xl font-bold tracking-tight font-headline">Riwayat Penjualan</h1>
-        <p className="text-muted-foreground">Daftar semua transaksi penjualan yang telah disimpan.</p>
+        <p className="text-muted-foreground font-serif">Daftar semua transaksi penjualan yang telah disimpan.</p>
       </div>
       <div className="flex-1 overflow-y-auto p-4 md:p-8">
         {history.length > 0 ? (
@@ -111,7 +111,7 @@ export function RiwayatClient() {
              <div className="flex h-full min-h-[400px] w-full items-center justify-center">
                 <div className="text-center">
                     <p className="text-lg font-semibold">Belum Ada Riwayat</p>
-                    <p className="text-muted-foreground">Belum ada transaksi penjualan yang tercatat.</p>
+                    <p className="text-muted-foreground font-serif">Belum ada transaksi penjualan yang tercatat.</p>
                 </div>
             </div>
         )}

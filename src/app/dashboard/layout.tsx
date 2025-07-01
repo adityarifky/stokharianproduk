@@ -198,7 +198,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
             <div className="flex h-full w-full items-center justify-center p-4 text-center">
                 <div className="flex flex-col items-center gap-2">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <p className="text-muted-foreground">Menunggu sesi kerja dimulai...</p>
+                    <p className="text-muted-foreground font-serif">Menunggu sesi kerja dimulai...</p>
                 </div>
             </div>
           )}

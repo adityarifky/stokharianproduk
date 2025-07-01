@@ -159,7 +159,7 @@ export function UpdateClient() {
     <div className="flex h-full flex-col">
       <div className="flex-none border-b bg-background p-4 md:p-6">
         <h1 className="text-2xl font-bold tracking-tight font-headline">Catat Produk Yang Sudah Terjual</h1>
-        <p className="text-muted-foreground">Kurangi stok untuk setiap produk yang laku terjual, lalu simpan.</p>
+        <p className="text-muted-foreground font-serif">Kurangi stok untuk setiap produk yang laku terjual, lalu simpan.</p>
         <div className="mt-4 w-full overflow-x-auto pb-2">
           <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full min-w-max">
             <TabsList>
@@ -206,7 +206,7 @@ export function UpdateClient() {
         ) : (
           <div className="flex flex-col items-center justify-center text-center h-full">
             <p className="text-lg font-semibold">Tidak Ada Produk</p>
-            <p className="text-muted-foreground">Tidak ada produk yang ditemukan dalam kategori '{selectedCategory}'.</p>
+            <p className="text-muted-foreground font-serif">Tidak ada produk yang ditemukan dalam kategori '{selectedCategory}'.</p>
           </div>
         )}
       </div>

@@ -12,6 +12,7 @@ export default {
       fontFamily: {
         body: ['Inter', 'sans-serif'],
         headline: ['Poppins', 'sans-serif'],
+        serif: ['"Times New Roman"', 'Times', 'serif'],
         code: ['monospace'],
       },
       colors: {
