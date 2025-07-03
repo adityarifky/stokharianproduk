@@ -1,10 +1,10 @@
-
 package com.example.stokdreampuff
 
 import android.os.Bundle
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
+import com.example.stokdreampuff.R // <-- Ini baris import baru yang krusial
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -19,7 +19,7 @@ class MainActivity : AppCompatActivity() {
         // Baris ini mengaktifkan JavaScript, wajib agar React bisa berjalan
         myWebView.settings.javaScriptEnabled = true
         
-        // Memuat URL aplikasi web dari URL dasar
-        myWebView.loadUrl("https://stokharianproduk.vercel.app/")
+        // Menggunakan URL yang benar, dimulai dari halaman utama (login)
+        myWebView.loadUrl("https://stokharianproduk.vercel.app/") 
     }
 }
