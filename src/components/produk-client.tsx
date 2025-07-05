@@ -126,6 +126,7 @@ export function ProdukClient() {
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [showKitchenReminder, setShowKitchenReminder] = useState(false);
   const { sendNotification } = useBrowserNotifications();
+  const [updateCategory, setUpdateCategory] = useState<string>('Semua');
   
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [crop, setCrop] = useState<Crop>();
@@ -574,6 +575,8 @@ export function ProdukClient() {
     }
   }
 
+  const filteredUpdateProducts = products.filter(p => updateCategory === 'Semua' || p.category === updateCategory);
+
   return (
     <>
     <div
@@ -624,7 +627,32 @@ export function ProdukClient() {
             <CardContent>
               <Form {...updateForm}>
                 <form onSubmit={updateForm.handleSubmit(onUpdateStockSubmit)} className="space-y-4">
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <FormItem>
+                      <FormLabel>Filter Kategori</FormLabel>
+                      <Select
+                        onValueChange={(value) => {
+                          setUpdateCategory(value);
+                          updateForm.setValue('productId', '', { shouldValidate: true });
+                        }}
+                        value={updateCategory}
+                        disabled={isLoading}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Filter berdasarkan kategori" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Semua">Semua Kategori</SelectItem>
+                          {categories.map((cat) => (
+                            <SelectItem key={cat} value={cat}>
+                              {cat}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
                     <FormField
                       control={updateForm.control}
                       name="productId"
@@ -638,7 +666,7 @@ export function ProdukClient() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {products.map((product) => (
+                              {filteredUpdateProducts.map((product) => (
                                 <SelectItem key={product.id} value={product.id}>
                                   {product.name}
                                 </SelectItem>
