@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import {
   collection,
   query,
@@ -9,7 +10,6 @@ import {
   where,
   getDocs,
   Timestamp,
-  orderBy,
 } from "firebase/firestore";
 import { format, addDays, startOfDay, endOfDay } from "date-fns";
 import { id as IndonesianLocale } from "date-fns/locale";
@@ -36,6 +36,23 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { ImagePreviewDialog } from "./image-preview-dialog";
+
 
 interface ChartData {
   date: string;
@@ -59,6 +76,9 @@ export function DashboardClient() {
   const { toast } = useToast();
   const { sessionEstablished } = useSession();
   const isMobile = useIsMobile();
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [selectedCategoryData, setSelectedCategoryData] = useState<{ category: string; products: Product[] } | null>(null);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: addDays(new Date(), -6),
@@ -212,8 +232,15 @@ export function DashboardClient() {
     };
     setCurrentDate(today.toLocaleDateString('id-ID', options).replace(/,/g, ''));
   }, []);
+
+  const handleCardClick = (categoryName: string) => {
+    const productList = products.filter(p => p.category === categoryName);
+    setSelectedCategoryData({ category: categoryName, products: productList.sort((a, b) => a.name.localeCompare(b.name)) });
+    setIsDetailDialogOpen(true);
+  };
   
   return (
+    <>
     <div className="flex flex-col">
        <div className="flex-none border-b bg-background p-4 md:p-6">
         <h1 className="text-2xl font-bold tracking-tight font-headline">Dashboard</h1>
@@ -226,7 +253,10 @@ export function DashboardClient() {
             </div>
         ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-                <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
+                <Card 
+                  className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105 cursor-pointer"
+                  onClick={() => handleCardClick("Creampuff")}
+                >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Creampuff</CardTitle>
                     <Cookie className="h-4 w-4 text-muted-foreground" />
@@ -236,7 +266,10 @@ export function DashboardClient() {
                     <p className="text-xs text-muted-foreground font-serif">{currentDate || 'Memuat...'}</p>
                     </CardContent>
                 </Card>
-                <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
+                <Card 
+                  className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105 cursor-pointer"
+                  onClick={() => handleCardClick("Cheesecake")}
+                >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Cheesecake</CardTitle>
                     <CakeSlice className="h-4 w-4 text-muted-foreground" />
@@ -246,7 +279,10 @@ export function DashboardClient() {
                     <p className="text-xs text-muted-foreground font-serif">{currentDate || 'Memuat...'}</p>
                     </CardContent>
                 </Card>
-                <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
+                <Card 
+                  className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105 cursor-pointer"
+                  onClick={() => handleCardClick("Millecrepes")}
+                >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Millecrepes</CardTitle>
                     <Layers className="h-4 w-4 text-muted-foreground" />
@@ -256,7 +292,10 @@ export function DashboardClient() {
                     <p className="text-xs text-muted-foreground font-serif">{currentDate || 'Memuat...'}</p>
                     </CardContent>
                 </Card>
-                <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
+                <Card 
+                  className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105 cursor-pointer"
+                  onClick={() => handleCardClick("Minuman")}
+                >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Minuman</CardTitle>
                     <CupSoda className="h-4 w-4 text-muted-foreground" />
@@ -266,7 +305,10 @@ export function DashboardClient() {
                     <p className="text-xs text-muted-foreground font-serif">{currentDate || 'Memuat...'}</p>
                     </CardContent>
                 </Card>
-                <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
+                <Card 
+                  className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105 cursor-pointer"
+                  onClick={() => handleCardClick("Snackbox")}
+                >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Snackbox</CardTitle>
                     <Box className="h-4 w-4 text-muted-foreground" />
@@ -276,7 +318,10 @@ export function DashboardClient() {
                     <p className="text-xs text-muted-foreground font-serif">{currentDate || 'Memuat...'}</p>
                     </CardContent>
                 </Card>
-                <Card className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105">
+                <Card 
+                  className="transition-transform duration-200 ease-in-out hover:scale-105 active:scale-105 cursor-pointer"
+                  onClick={() => handleCardClick("Lainnya")}
+                >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Lainnya</CardTitle>
                     <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
@@ -374,5 +419,58 @@ export function DashboardClient() {
         </Card>
       </div>
     </div>
+    
+    <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Detail Stok: {selectedCategoryData?.category}</DialogTitle>
+          <DialogDescription>
+            Daftar produk yang tersedia untuk kategori ini.
+          </DialogDescription>
+        </DialogHeader>
+        {selectedCategoryData && selectedCategoryData.products.length > 0 ? (
+          <div className="max-h-[60vh] overflow-y-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[60px]">Gambar</TableHead>
+                  <TableHead>Nama Produk</TableHead>
+                  <TableHead className="text-right">Stok</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {selectedCategoryData.products.map((product) => (
+                  <TableRow key={product.id}>
+                    <TableCell>
+                      <button
+                        onClick={() => setPreviewImageUrl(product.image)}
+                        className="rounded-md overflow-hidden focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                      >
+                        <Image
+                          src={product.image}
+                          alt={product.name}
+                          width={40}
+                          height={40}
+                          className="rounded-md object-cover aspect-square"
+                          data-ai-hint="product food"
+                        />
+                      </button>
+                    </TableCell>
+                    <TableCell className="font-medium">{product.name}</TableCell>
+                    <TableCell className="text-right">{product.stock}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <p className="py-4 text-center text-sm text-muted-foreground">
+            Tidak ada produk dalam kategori ini.
+          </p>
+        )}
+      </DialogContent>
+    </Dialog>
+    <ImagePreviewDialog imageUrl={previewImageUrl} onClose={() => setPreviewImageUrl(null)} />
+    </>
   );
 }
