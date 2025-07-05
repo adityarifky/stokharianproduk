@@ -264,6 +264,7 @@ export function DashboardClient() {
                     <CardContent>
                     <div className="text-2xl font-bold">{categoryCounts.Creampuff}</div>
                     <p className="text-xs text-muted-foreground font-serif">{currentDate || 'Memuat...'}</p>
+                    <p className="text-[10px] text-muted-foreground/90 text-right mt-1">Klik untuk melihat detail.</p>
                     </CardContent>
                 </Card>
                 <Card 
@@ -277,6 +278,7 @@ export function DashboardClient() {
                     <CardContent>
                     <div className="text-2xl font-bold">{categoryCounts.Cheesecake}</div>
                     <p className="text-xs text-muted-foreground font-serif">{currentDate || 'Memuat...'}</p>
+                    <p className="text-[10px] text-muted-foreground/90 text-right mt-1">Klik untuk melihat detail.</p>
                     </CardContent>
                 </Card>
                 <Card 
@@ -290,6 +292,7 @@ export function DashboardClient() {
                     <CardContent>
                     <div className="text-2xl font-bold">{categoryCounts.Millecrepes}</div>
                     <p className="text-xs text-muted-foreground font-serif">{currentDate || 'Memuat...'}</p>
+                    <p className="text-[10px] text-muted-foreground/90 text-right mt-1">Klik untuk melihat detail.</p>
                     </CardContent>
                 </Card>
                 <Card 
@@ -303,6 +306,7 @@ export function DashboardClient() {
                     <CardContent>
                     <div className="text-2xl font-bold">{categoryCounts.Minuman}</div>
                     <p className="text-xs text-muted-foreground font-serif">{currentDate || 'Memuat...'}</p>
+                    <p className="text-[10px] text-muted-foreground/90 text-right mt-1">Klik untuk melihat detail.</p>
                     </CardContent>
                 </Card>
                 <Card 
@@ -316,6 +320,7 @@ export function DashboardClient() {
                     <CardContent>
                     <div className="text-2xl font-bold">{categoryCounts.Snackbox}</div>
                     <p className="text-xs text-muted-foreground font-serif">{currentDate || 'Memuat...'}</p>
+                    <p className="text-[10px] text-muted-foreground/90 text-right mt-1">Klik untuk melihat detail.</p>
                     </CardContent>
                 </Card>
                 <Card 
@@ -329,6 +334,7 @@ export function DashboardClient() {
                     <CardContent>
                     <div className="text-2xl font-bold">{categoryCounts.Lainnya}</div>
                     <p className="text-xs text-muted-foreground font-serif">{currentDate || 'Memuat...'}</p>
+                    <p className="text-[10px] text-muted-foreground/90 text-right mt-1">Klik untuk melihat detail.</p>
                     </CardContent>
                 </Card>
             </div>
