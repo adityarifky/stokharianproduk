@@ -139,8 +139,9 @@ export function UpdateClient() {
             description: `Berhasil menyimpan penjualan ${quantity} ${product.name}.`
         });
         
+        // Kirim notifikasi yang lebih deskriptif
         if (newStock === 0) {
-            sendNotification('Stok Habis!', { body: `Produk "${product.name}" telah habis terjual.` });
+            sendNotification('Stok Habis!', { body: `Produk "${product.name}" telah habis terjual oleh ${sessionInfo.name}.` });
         } else {
             sendNotification(
                 `${quantity} ${product.name} Terjual`, 

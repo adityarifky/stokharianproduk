@@ -139,18 +139,19 @@ export function UpdateClient() {
             description: `Berhasil menyimpan penjualan ${quantity} ${product.name}.`
         });
         
-        const newChanges = new Map(pendingChanges);
-        newChanges.delete(product.id);
-        setPendingChanges(newChanges);
-
+        // Kirim notifikasi yang lebih deskriptif
         if (newStock === 0) {
-            sendNotification('Stok Habis!', { body: `Produk "${product.name}" telah habis terjual.` });
+            sendNotification('Stok Habis!', { body: `Produk "${product.name}" telah habis terjual oleh ${sessionInfo.name}.` });
         } else {
             sendNotification(
                 `${quantity} ${product.name} Terjual`, 
                 { body: `Dicatat oleh ${sessionInfo.name}. Stok tersisa: ${newStock}.` }
             );
         }
+        
+        const newChanges = new Map(pendingChanges);
+        newChanges.delete(product.id);
+        setPendingChanges(newChanges);
 
     } catch (error) {
         console.error("Error saving sales: ", error);
