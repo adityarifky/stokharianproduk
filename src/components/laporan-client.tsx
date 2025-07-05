@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { collection, query, onSnapshot, orderBy, where, getDocs } from "firebase/firestore";
-import { Loader2, CalendarDays, TrendingUp, TrendingDown, FileSearch, Calendar as CalendarIcon } from "lucide-react";
+import { Loader2, CalendarDays, TrendingUp, TrendingDown, FileSearch, Calendar as CalendarIcon, User } from "lucide-react";
 import Image from "next/image";
 import { format } from "date-fns";
 import { id as IndonesianLocale } from "date-fns/locale";
@@ -229,7 +229,11 @@ export function LaporanClient() {
                           <CardHeader>
                               <CardTitle className="text-lg">Laporan untuk {formatDate(report.timestamp)}</CardTitle>
                                <CardDescription className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1">
-                                  <span className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4" /> Dibuat Otomatis</span>
+                                  {report.session?.name ? (
+                                    <span className="flex items-center gap-1.5"><User className="h-4 w-4" /> Dibuat oleh {report.session.name}</span>
+                                  ) : (
+                                    <span className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4" /> Dibuat Otomatis</span>
+                                  )}
                                   <span className="flex items-center gap-1.5"><TrendingUp className="h-4 w-4 text-green-500" /> {report.totalSold} produk terjual</span>
                                   <span className="flex items-center gap-1.5"><TrendingDown className="h-4 w-4 text-red-500" /> {report.totalRejected} produk sisa</span>
                                </CardDescription>

@@ -422,6 +422,18 @@ export function ProdukClient() {
 
   const handleResetAllStock = async () => {
     setIsLoading(true);
+
+    if (!sessionInfo) {
+      toast({
+        variant: "destructive",
+        title: "Sesi Tidak Ditemukan",
+        description: "Tidak dapat membuat laporan karena informasi sesi tidak ada.",
+      });
+      setIsLoading(false);
+      setIsResetDialogOpen(false);
+      return;
+    }
+
     try {
       const batch = writeBatch(db);
 
@@ -487,6 +499,7 @@ export function ProdukClient() {
         const reportRef = doc(reportsCollection);
         batch.set(reportRef, {
           timestamp: serverTimestamp(),
+          session: sessionInfo,
           itemsSold,
           itemsRejected,
           totalSold,

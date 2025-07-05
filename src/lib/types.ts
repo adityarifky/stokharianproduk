@@ -44,6 +44,10 @@ export interface ReportItem {
 export interface Report {
   id:string;
   timestamp: Timestamp;
+  session: {
+    name: string;
+    position: string;
+  };
   itemsSold: ReportItem[];
   itemsRejected: ReportItem[];
   totalSold: number;
