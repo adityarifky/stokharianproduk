@@ -15,7 +15,7 @@ import {
   Croissant,
 } from "lucide-react";
 import { onAuthStateChanged, type User, signOut } from "firebase/auth";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, doc, onSnapshot } from "firebase/firestore";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -31,6 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SessionProvider, useSession } from "@/context/SessionContext";
 import { cn } from "@/lib/utils";
 import { useBrowserNotifications } from "@/hooks/use-browser-notifications";
+import type { UserProfile } from "@/lib/types";
 
 const sessionFormSchema = z.object({
   name: z.string().min(1, "Nama harus diisi."),
@@ -49,16 +50,8 @@ function InnerLayout({ children }: { children: ReactNode }) {
   const { sessionEstablished, setSessionEstablished, setSessionInfo } = useSession();
   const [isSubmittingSession, setIsSubmittingSession] = useState(false);
   const { sendNotification } = useBrowserNotifications();
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
-  useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(err => {
-          console.error("Service Worker registration failed:", err);
-        });
-      });
-    }
-  }, []);
 
   const sessionForm = useForm<z.infer<typeof sessionFormSchema>>({
     resolver: zodResolver(sessionFormSchema),
@@ -66,7 +59,9 @@ function InnerLayout({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    let unsubscribeProfile: () => void = () => {};
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       if (!currentUser) {
         router.push("/");
       } else {
@@ -109,9 +104,18 @@ function InnerLayout({ children }: { children: ReactNode }) {
 
         setUser(currentUser);
         setLoading(false);
+
+        // Listen to profile changes
+        const profileDocRef = doc(db, "userProfiles", currentUser.uid);
+        unsubscribeProfile = onSnapshot(profileDocRef, (docSnap) => {
+          setUserProfile(docSnap.exists() ? (docSnap.data() as UserProfile) : null);
+        });
       }
     });
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      unsubscribeProfile();
+    };
   }, [router, toast, setSessionEstablished, setSessionInfo]);
   
   useEffect(() => {
@@ -190,8 +194,13 @@ function InnerLayout({ children }: { children: ReactNode }) {
                   data-ai-hint="company logo"
                 />
             </Link>
-            <div className="flex flex-1 items-center justify-end gap-4">
-              <UserNav />
+            <div className="flex flex-1 items-center justify-end gap-2">
+                {userProfile?.statusNote && (
+                    <div className="hidden sm:flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5 text-xs text-muted-foreground shadow font-headline">
+                      {userProfile.statusNote}
+                    </div>
+                )}
+              <UserNav userProfile={userProfile} />
             </div>
         </header>
 

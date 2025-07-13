@@ -4,7 +4,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from "next/navigation";
 import { signOut, onAuthStateChanged, type User } from "firebase/auth";
-import { doc, onSnapshot, setDoc, addDoc, collection, query, where, orderBy, limit, Timestamp } from "firebase/firestore";
+import { doc, onSnapshot, setDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,15 +25,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, User as UserIcon, Loader2, Camera, PlusCircle } from "lucide-react";
+import { LogOut, User as UserIcon, Loader2, Camera, Edit } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { useSession } from '@/context/SessionContext';
 import { ImagePreviewDialog } from './image-preview-dialog';
-import { Separator } from './ui/separator';
-import { cn } from '@/lib/utils';
-import type { Story } from '@/lib/types';
-import Image from 'next/image';
+import type { UserProfile } from '@/lib/types';
 
 
 // Helper to convert file to Data URI
@@ -44,67 +43,25 @@ const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, rej
   reader.readAsDataURL(file);
 });
 
-export function UserNav() {
+export function UserNav({ userProfile }: { userProfile: UserProfile | null }) {
   const router = useRouter();
   const { sessionEstablished, setSessionEstablished, setSessionInfo, sessionInfo } = useSession();
   const [user, setUser] = useState<User | null>(null);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  
-  const [story, setStory] = useState<Story | null>(null);
-  const [isStoryViewerOpen, setIsStoryViewerOpen] = useState(false);
+  const [statusNote, setStatusNote] = useState("");
 
   useEffect(() => {
-    let unsubscribeProfile: () => void = () => {};
-    let unsubscribeStory: () => void = () => {};
-
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      
-      unsubscribeProfile();
-      unsubscribeStory();
-
-      if (currentUser) {
-          const profileDocRef = doc(db, "userProfiles", currentUser.uid);
-          unsubscribeProfile = onSnapshot(profileDocRef, (docSnap) => {
-            if (docSnap.exists() && docSnap.data().photoURL) {
-              setAvatarUrl(docSnap.data().photoURL);
-            } else {
-              setAvatarUrl(currentUser.photoURL || null);
-            }
-          });
-          
-          const twentyFourHoursAgo = Timestamp.fromMillis(Date.now() - 24 * 60 * 60 * 1000);
-          const storyQuery = query(
-            collection(db, "stories"),
-            where("userId", "==", currentUser.uid),
-            where("timestamp", ">=", twentyFourHoursAgo),
-            orderBy("timestamp", "desc"),
-            limit(1)
-          );
-
-          unsubscribeStory = onSnapshot(storyQuery, (snapshot) => {
-            if (!snapshot.empty) {
-              setStory({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Story);
-            } else {
-              setStory(null);
-            }
-          });
-      } else {
-        setAvatarUrl(null);
-        setStory(null);
-      }
     });
 
     return () => {
       unsubscribeAuth();
-      unsubscribeProfile();
-      unsubscribeStory();
     };
   }, []);
 
@@ -136,72 +93,66 @@ export function UserNav() {
     }
   };
 
-  const handleUpdate = async (type: 'profile' | 'story') => {
-    if (!selectedFile || !user) return;
+  const handleProfileUpdate = async () => {
+    if (!user) return;
+    if (!selectedFile && statusNote === (userProfile?.statusNote || "")) {
+        toast({ title: "Tidak ada perubahan", description: "Tidak ada data baru untuk disimpan." });
+        return;
+    }
+    
     setIsUploading(true);
-
     try {
-        const photoDataUri = await fileToDataUri(selectedFile);
-        if (type === 'profile') {
-            const profileDocRef = doc(db, "userProfiles", user.uid);
-            await setDoc(profileDocRef, { photoURL: photoDataUri }, { merge: true });
-            toast({ title: "Sukses", description: "Foto profil berhasil diperbarui." });
-        } else {
-            await addDoc(collection(db, "stories"), {
-                userId: user.uid,
-                storyImageUrl: photoDataUri,
-                timestamp: serverTimestamp(),
-            });
-            toast({ title: "Sukses", description: "Story berhasil ditambahkan." });
-        }
-        setIsProfileDialogOpen(false);
-    } catch (error) {
-        console.error(`${type} update error:`, error);
-        toast({ variant: "destructive", title: "Gagal", description: `Gagal memperbarui ${type}.` });
-    } finally {
-        setIsUploading(false);
-        setSelectedFile(null);
-        setPreviewUrl(null);
-    }
-  }
+      const profileDocRef = doc(db, "userProfiles", user.uid);
+      const updates: { photoURL?: string, statusNote?: string } = {};
 
-  const handleTriggerClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    if (story) {
-        event.preventDefault(); // Prevent dropdown from opening if there's a story
-        setIsStoryViewerOpen(true);
+      if (selectedFile) {
+        updates.photoURL = await fileToDataUri(selectedFile);
+      }
+      if (statusNote !== (userProfile?.statusNote || "")) {
+        updates.statusNote = statusNote;
+      }
+      
+      await setDoc(profileDocRef, updates, { merge: true });
+
+      toast({
+        title: "Sukses",
+        description: "Profil berhasil diperbarui.",
+      });
+
+      setIsProfileDialogOpen(false);
+    } catch (error) {
+      console.error("Profile update error:", error);
+      toast({
+        variant: "destructive",
+        title: "Gagal",
+        description: "Gagal memperbarui profil.",
+      });
+    } finally {
+      setIsUploading(false);
     }
-    // If no story, the dropdown opens by default
-  }
+  };
   
   const openDialog = () => {
-    setIsProfileDialogOpen(true);
-    setPreviewUrl(avatarUrl);
+    setPreviewUrl(userProfile?.photoURL || null);
+    setStatusNote(userProfile?.statusNote || "");
     setSelectedFile(null);
+    setIsProfileDialogOpen(true);
   }
+
+  const avatarUrl = userProfile?.photoURL || user?.photoURL;
 
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button
-            onClick={handleTriggerClick}
-            disabled={!sessionEstablished}
-            className={cn(
-              "relative rounded-full focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-              story && "p-0.5"
-            )}
-            aria-label="User menu"
-          >
-            {story && (
-                <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500 animate-spin-slow" />
-            )}
-            <Avatar className="h-9 w-9 border-2 border-background">
+          <Button variant="ghost" className="relative h-9 w-9 rounded-full" disabled={!sessionEstablished}>
+            <Avatar className="h-9 w-9">
               <AvatarImage src={avatarUrl || "https://placehold.co/100x100.png"} alt="@pengguna" data-ai-hint="user avatar" />
               <AvatarFallback>
                 {user?.email ? user.email.charAt(0).toUpperCase() : <UserIcon />}
               </AvatarFallback>
             </Avatar>
-          </button>
+          </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end" forceMount>
           <DropdownMenuLabel className="font-normal">
@@ -215,8 +166,8 @@ export function UserNav() {
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
             <DropdownMenuItem onSelect={openDialog}>
-              <UserIcon className="mr-2 h-4 w-4" />
-              <span>Profil & Story</span>
+              <Edit className="mr-2 h-4 w-4" />
+              <span>Profil & Catatan</span>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
@@ -229,17 +180,17 @@ export function UserNav() {
       <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Profil & Story</DialogTitle>
+            <DialogTitle>Profil & Catatan</DialogTitle>
             <DialogDescription>
-              Ubah foto profil Anda atau tambahkan story baru.
+              Ubah foto profil atau perbarui catatan status Anda.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-6 py-4">
               <div className="space-y-4">
-                <p className="text-sm font-medium text-center">Foto Profil</p>
+                <Label className="text-sm font-medium text-center block">Foto Profil</Label>
                 <div className="flex flex-col items-center gap-2">
                   <Avatar className="h-20 w-20">
-                      <AvatarImage src={previewUrl || avatarUrl || "https://placehold.co/100x100.png"} alt="Pratinjau Profil" data-ai-hint="user avatar preview" />
+                      <AvatarImage src={previewUrl || "https://placehold.co/100x100.png"} alt="Pratinjau Profil" data-ai-hint="user avatar preview" />
                       <AvatarFallback>
                         {user?.email ? user.email.charAt(0).toUpperCase() : <UserIcon />}
                       </AvatarFallback>
@@ -248,54 +199,41 @@ export function UserNav() {
                     <Camera className="mr-2 h-4 w-4" />
                     Pilih Gambar
                   </Button>
+                   <Input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept="image/png, image/jpeg"
+                    onChange={handleFileChange}
+                    disabled={isUploading}
+                   />
                 </div>
               </div>
 
-              <Separator />
-
-              <div className="space-y-4 text-center">
-                 <p className="text-sm font-medium">Story</p>
-                 <Button size="sm" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Tambah Story Baru
-                 </Button>
-                 <p className="text-xs text-muted-foreground font-serif px-4">Story akan hilang setelah 24 jam.</p>
+              <div className="space-y-2">
+                 <Label htmlFor="status-note" className="text-sm font-medium">Catatan/Status</Label>
+                 <Textarea 
+                   id="status-note"
+                   placeholder="Lagi sibuk..."
+                   value={statusNote}
+                   onChange={(e) => setStatusNote(e.target.value)}
+                   disabled={isUploading}
+                   maxLength={100}
+                 />
+                 <p className="text-xs text-muted-foreground text-right">{statusNote.length} / 100</p>
               </div>
-
-              {selectedFile && previewUrl && (
-                <div className="space-y-4 pt-4 border-t">
-                  <p className="text-sm font-medium text-center">Pratinjau & Simpan</p>
-                  <div className="flex justify-center">
-                     <Image src={previewUrl} alt="Preview" width={200} height={200} className="rounded-md object-contain max-h-48" />
-                  </div>
-                  <div className="flex justify-center gap-2">
-                      <Button onClick={() => handleUpdate('profile')} disabled={isUploading}>
-                        {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                        Simpan sebagai Profil
-                      </Button>
-                      <Button onClick={() => handleUpdate('story')} disabled={isUploading}>
-                         {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                        Upload sebagai Story
-                      </Button>
-                  </div>
-                </div>
-              )}
-
-              <Input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept="image/png, image/jpeg"
-                onChange={handleFileChange}
-              />
           </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsProfileDialogOpen(false)} disabled={isUploading}>
+              Batal
+            </Button>
+            <Button onClick={handleProfileUpdate} disabled={isUploading}>
+              {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Simpan Perubahan
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
-      <ImagePreviewDialog
-        imageUrl={isStoryViewerOpen ? story?.storyImageUrl : null}
-        onClose={() => setIsStoryViewerOpen(false)}
-        imageAlt="User Story"
-      />
     </>
   );
 }

@@ -70,9 +70,7 @@ export interface StockUpdateHistory {
   stockAfter: number;
 }
 
-export interface Story {
-    id: string;
-    userId: string;
-    storyImageUrl: string;
-    timestamp: Timestamp;
+export interface UserProfile {
+  photoURL?: string;
+  statusNote?: string;
 }
