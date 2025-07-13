@@ -4,7 +4,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from "next/navigation";
 import { signOut, onAuthStateChanged, type User } from "firebase/auth";
-import { doc, onSnapshot, setDoc, addDoc, collection, query, where, orderBy, limit, Timestamp, getDocs } from "firebase/firestore";
+import { doc, onSnapshot, setDoc, addDoc, collection, query, where, orderBy, limit, Timestamp } from "firebase/firestore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +33,7 @@ import { ImagePreviewDialog } from './image-preview-dialog';
 import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
 import type { Story } from '@/lib/types';
+import Image from 'next/image';
 
 
 // Helper to convert file to Data URI
@@ -105,7 +106,7 @@ export function UserNav() {
       unsubscribeProfile();
       unsubscribeStory();
     };
-  }, [sessionEstablished]);
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -164,12 +165,12 @@ export function UserNav() {
     }
   }
 
-  const handleTriggerClick = () => {
+  const handleTriggerClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (story) {
+        event.preventDefault(); // Prevent dropdown from opening if there's a story
         setIsStoryViewerOpen(true);
-    } else {
-        // Default DropdownMenu behavior will take over
     }
+    // If no story, the dropdown opens by default
   }
   
   const openDialog = () => {
