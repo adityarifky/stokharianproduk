@@ -4,7 +4,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, useMemo, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   BarChart,
   History,
@@ -46,9 +46,8 @@ function InnerLayout({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [isSessionDialogOpen, setIsSessionDialogOpen] = useState(false);
-  const { sessionEstablished, setSessionEstablished, setSessionInfo, sessionInfo } = useSession();
+  const { sessionEstablished, setSessionEstablished, setSessionInfo } = useSession();
   const [isSubmittingSession, setIsSubmittingSession] = useState(false);
-  const [motivationalQuote, setMotivationalQuote] = useState("");
   const { sendNotification } = useBrowserNotifications();
 
   useEffect(() => {
@@ -60,19 +59,6 @@ function InnerLayout({ children }: { children: ReactNode }) {
       });
     }
   }, []);
-
-  const motivationalQuotes = useMemo(() => [
-      "Mulai kerja dulu ya, biar gak jadi beban tim 🤡💼",
-      "Kerja dulu... biar bisa santai tanpa rasa bersalah 🤭",
-      "Fokus ya, jangan ke-distract notif mantan 🚫",
-      "Skip drama, fokus kerja dulu 🎯",
-      "Kerja pelan-pelan, asal gak ngeluh terus 😆",
-      "Fokus, jangan kasih kendor 💪",
-      "Ketik satu, tarik napas, semangat lagi ✍️😤",
-      "Gas kerja, gas sukses! 💨💼",
-      "Senyumin kerjaan kamu 😬",
-      "Bukan mager time 😤",
-  ], []);
 
   const sessionForm = useForm<z.infer<typeof sessionFormSchema>>({
     resolver: zodResolver(sessionFormSchema),
@@ -136,31 +122,6 @@ function InnerLayout({ children }: { children: ReactNode }) {
     }
   }, [user, sessionEstablished]);
 
-  useEffect(() => {
-    if (!sessionEstablished || !sessionInfo?.name) {
-        setMotivationalQuote("");
-        return;
-    }
-
-    let currentQuoteIndex = -1;
-
-    const updateQuote = () => {
-        let nextIndex;
-        do {
-            nextIndex = Math.floor(Math.random() * motivationalQuotes.length);
-        } while (nextIndex === currentQuoteIndex);
-
-        currentQuoteIndex = nextIndex;
-        const quote = motivationalQuotes[nextIndex];
-        setMotivationalQuote(`Halo ${sessionInfo.name}, ${quote}`);
-    };
-
-    updateQuote();
-    const intervalId = setInterval(updateQuote, 7000); 
-
-    return () => clearInterval(intervalId);
-  }, [sessionEstablished, sessionInfo, motivationalQuotes]);
-
   const menuItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/dashboard/update", label: "Update Produk", icon: FilePenLine },
@@ -197,8 +158,6 @@ function InnerLayout({ children }: { children: ReactNode }) {
         });
     } catch (error) {
       console.error("Session creation failed to sync with server:", error);
-      // The session is already active locally, so we just notify the user about the sync issue.
-      // We don't need to revert the state, as that would be disruptive.
       toast({
         variant: "destructive",
         title: "Gagal Sinkronisasi Sesi",
@@ -231,19 +190,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
                   data-ai-hint="company logo"
                 />
             </Link>
-            <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
-                {motivationalQuote && (
-                    <div key={motivationalQuote} className="relative animate-fade-in-out flex-shrink min-w-0">
-                      <div className="rounded-lg bg-muted px-2 py-1 text-xs text-muted-foreground shadow font-headline">
-                        {motivationalQuote}
-                      </div>
-                      <div className="absolute top-1/2 -mt-2 -right-2 h-0 w-0
-                        border-t-[8px] border-t-transparent
-                        border-l-[10px] border-l-muted
-                        border-b-[8px] border-b-transparent"
-                      />
-                    </div>
-                )}
+            <div className="flex flex-1 items-center justify-end gap-4">
               <UserNav />
             </div>
         </header>
