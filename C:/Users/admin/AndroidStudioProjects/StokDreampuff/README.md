@@ -10,3 +10,4 @@ This is a Next.js application for managing daily food product stock for Dreampuf
 - Update stock quantities for existing products
 
 <!-- Git Sync Helper -->
+<!-- Force Sync V2 -->
