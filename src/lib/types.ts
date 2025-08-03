@@ -1,3 +1,4 @@
+
 import { Timestamp } from "firebase/firestore";
 
 export interface Product {
@@ -68,4 +69,9 @@ export interface StockUpdateHistory {
   };
   quantityAdded: number;
   stockAfter: number;
+}
+
+export interface UserProfile {
+  photoURL?: string;
+  statusNote?: string;
 }

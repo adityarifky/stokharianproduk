@@ -4,7 +4,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, useMemo, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   BarChart,
   History,
@@ -15,7 +15,7 @@ import {
   Croissant,
 } from "lucide-react";
 import { onAuthStateChanged, type User, signOut } from "firebase/auth";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, doc, onSnapshot } from "firebase/firestore";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -31,6 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SessionProvider, useSession } from "@/context/SessionContext";
 import { cn } from "@/lib/utils";
 import { useBrowserNotifications } from "@/hooks/use-browser-notifications";
+import type { UserProfile } from "@/lib/types";
 
 const sessionFormSchema = z.object({
   name: z.string().min(1, "Nama harus diisi."),
@@ -46,23 +47,11 @@ function InnerLayout({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [isSessionDialogOpen, setIsSessionDialogOpen] = useState(false);
-  const { sessionEstablished, setSessionEstablished, setSessionInfo, sessionInfo } = useSession();
+  const { sessionEstablished, setSessionEstablished, setSessionInfo } = useSession();
   const [isSubmittingSession, setIsSubmittingSession] = useState(false);
-  const [motivationalQuote, setMotivationalQuote] = useState("");
   const { sendNotification } = useBrowserNotifications();
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
-  const motivationalQuotes = useMemo(() => [
-      "Mulai kerja dulu ya, biar gak jadi beban tim 🤡💼",
-      "Kerja dulu... biar bisa santai tanpa rasa bersalah 🤭",
-      "Fokus ya, jangan ke-distract notif mantan 🚫",
-      "Skip drama, fokus kerja dulu 🎯",
-      "Kerja pelan-pelan, asal gak ngeluh terus 😆",
-      "Fokus, jangan kasih kendor 💪",
-      "Ketik satu, tarik napas, semangat lagi ✍️😤",
-      "Gas kerja, gas sukses! 💨💼",
-      "Senyumin kerjaan kamu 😬",
-      "Bukan mager time 😤",
-  ], []);
 
   const sessionForm = useForm<z.infer<typeof sessionFormSchema>>({
     resolver: zodResolver(sessionFormSchema),
@@ -70,7 +59,9 @@ function InnerLayout({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    let unsubscribeProfile: () => void = () => {};
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       if (!currentUser) {
         router.push("/");
       } else {
@@ -113,9 +104,18 @@ function InnerLayout({ children }: { children: ReactNode }) {
 
         setUser(currentUser);
         setLoading(false);
+
+        // Listen to profile changes
+        const profileDocRef = doc(db, "userProfiles", currentUser.uid);
+        unsubscribeProfile = onSnapshot(profileDocRef, (docSnap) => {
+          setUserProfile(docSnap.exists() ? (docSnap.data() as UserProfile) : null);
+        });
       }
     });
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      unsubscribeProfile();
+    };
   }, [router, toast, setSessionEstablished, setSessionInfo]);
   
   useEffect(() => {
@@ -125,31 +125,6 @@ function InnerLayout({ children }: { children: ReactNode }) {
       setIsSessionDialogOpen(false);
     }
   }, [user, sessionEstablished]);
-
-  useEffect(() => {
-    if (!sessionEstablished || !sessionInfo?.name) {
-        setMotivationalQuote("");
-        return;
-    }
-
-    let currentQuoteIndex = -1;
-
-    const updateQuote = () => {
-        let nextIndex;
-        do {
-            nextIndex = Math.floor(Math.random() * motivationalQuotes.length);
-        } while (nextIndex === currentQuoteIndex);
-
-        currentQuoteIndex = nextIndex;
-        const quote = motivationalQuotes[nextIndex];
-        setMotivationalQuote(`Halo ${sessionInfo.name}, ${quote}`);
-    };
-
-    updateQuote();
-    const intervalId = setInterval(updateQuote, 7000); 
-
-    return () => clearInterval(intervalId);
-  }, [sessionEstablished, sessionInfo, motivationalQuotes]);
 
   const menuItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -187,8 +162,6 @@ function InnerLayout({ children }: { children: ReactNode }) {
         });
     } catch (error) {
       console.error("Session creation failed to sync with server:", error);
-      // The session is already active locally, so we just notify the user about the sync issue.
-      // We don't need to revert the state, as that would be disruptive.
       toast({
         variant: "destructive",
         title: "Gagal Sinkronisasi Sesi",
@@ -221,20 +194,13 @@ function InnerLayout({ children }: { children: ReactNode }) {
                   data-ai-hint="company logo"
                 />
             </Link>
-            <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
-                {motivationalQuote && (
-                    <div key={motivationalQuote} className="relative animate-fade-in-out flex-shrink min-w-0">
-                      <div className="rounded-lg bg-muted px-2 py-1 text-xs text-muted-foreground shadow font-headline">
-                        {motivationalQuote}
-                      </div>
-                      <div className="absolute top-1/2 -mt-2 -right-2 h-0 w-0
-                        border-t-[8px] border-t-transparent
-                        border-l-[10px] border-l-muted
-                        border-b-[8px] border-b-transparent"
-                      />
+            <div className="flex flex-1 items-center justify-end gap-2">
+                {userProfile?.statusNote && (
+                    <div className="hidden sm:flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5 text-xs text-muted-foreground shadow font-headline">
+                      {userProfile.statusNote}
                     </div>
                 )}
-              <UserNav />
+              <UserNav userProfile={userProfile} />
             </div>
         </header>
 
