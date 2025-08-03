@@ -4,7 +4,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from "next/navigation";
 import { signOut, onAuthStateChanged, type User } from "firebase/auth";
-import { doc, onSnapshot, setDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,7 +31,6 @@ import { useToast } from "@/hooks/use-toast";
 import { LogOut, User as UserIcon, Loader2, Camera, Edit } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { useSession } from '@/context/SessionContext';
-import { ImagePreviewDialog } from './image-preview-dialog';
 import type { UserProfile } from '@/lib/types';
 
 
