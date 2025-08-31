@@ -56,6 +56,12 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ message: 'Unauthorized: Invalid or missing API Key.' }, { status: 401 });
     }
 
+    // Pastikan Firebase Admin SDK sudah terinisialisasi
+    if (!adminDb) {
+      console.error("Firestore Admin is not initialized. Check server environment variables.");
+      return NextResponse.json({ message: 'Internal Server Error: Firebase configuration error.' }, { status: 500 });
+    }
+
     try {
         console.log("Fetching products from Firestore using Admin SDK...");
         const productsCollection = adminDb.collection("products");
@@ -122,6 +128,12 @@ interface StockUpdate {
 export async function POST(req: NextRequest) {
     if (!authenticateRequest(req)) {
         return NextResponse.json({ message: 'Unauthorized: Invalid or missing API Key.' }, { status: 401 });
+    }
+    
+    // Pastikan Firebase Admin SDK sudah terinisialisasi
+    if (!adminDb) {
+      console.error("Firestore Admin is not initialized. Check server environment variables.");
+      return NextResponse.json({ message: 'Internal Server Error: Firebase configuration error.' }, { status: 500 });
     }
 
     let updates: StockUpdate[];
