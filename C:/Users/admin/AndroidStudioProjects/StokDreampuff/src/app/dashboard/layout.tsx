@@ -224,14 +224,14 @@ function InnerLayout({ children }: { children: ReactNode }) {
           )}
         </main>
         
-        <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background p-1">
-            <div className="grid w-full grid-cols-6">
+        <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background p-1 md:hidden">
+            <div className="flex w-full overflow-x-auto">
                  {menuItems.map((item) => (
                     <Link
                         key={item.label}
                         href={item.href}
                         className={cn(
-                            "flex flex-col items-center justify-center gap-1 rounded-lg p-2 text-muted-foreground",
+                            "flex flex-col items-center justify-center gap-1 rounded-lg p-2 text-muted-foreground flex-shrink-0 w-24",
                             (pathname.startsWith(item.href) && (item.href !== "/dashboard" || pathname === "/dashboard"))
                             ? "bg-muted font-medium text-primary"
                             : "hover:text-primary",
@@ -240,7 +240,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
                         aria-disabled={!sessionEstablished}
                     >
                         <item.icon className="h-5 w-5" />
-                        <span className="text-xs">{item.label}</span>
+                        <span className="text-xs text-center">{item.label}</span>
                     </Link>
                 ))}
             </div>
