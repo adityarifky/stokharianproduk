@@ -73,5 +73,10 @@ export interface StockUpdateHistory {
 
 export interface UserProfile {
   photoURL?: string;
-  statusNote?: string;
+}
+
+export interface AppStatus {
+  note: string;
+  updatedBy: string;
+  updatedAt: Timestamp;
 }

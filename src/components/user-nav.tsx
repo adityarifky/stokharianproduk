@@ -4,7 +4,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from "next/navigation";
 import { signOut, onAuthStateChanged, type User } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,10 +28,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, User as UserIcon, Loader2, Camera, Edit } from "lucide-react";
+import { LogOut, User as UserIcon, Loader2, Camera, Edit, Info } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { useSession } from '@/context/SessionContext';
-import type { UserProfile } from '@/lib/types';
+import type { UserProfile, AppStatus } from '@/lib/types';
 
 
 // Helper to convert file to Data URI
@@ -42,7 +42,12 @@ const fileToDataUri = (file: File): Promise<string> => new Promise((resolve, rej
   reader.readAsDataURL(file);
 });
 
-export function UserNav({ userProfile }: { userProfile: UserProfile | null }) {
+interface UserNavProps {
+  userProfile: UserProfile | null;
+  appStatus: AppStatus | null;
+}
+
+export function UserNav({ userProfile, appStatus }: UserNavProps) {
   const router = useRouter();
   const { sessionEstablished, setSessionEstablished, setSessionInfo, sessionInfo } = useSession();
   const [user, setUser] = useState<User | null>(null);
@@ -53,15 +58,13 @@ export function UserNav({ userProfile }: { userProfile: UserProfile | null }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [statusNote, setStatusNote] = useState("");
+  const [lastUpdatedBy, setLastUpdatedBy] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
     });
-
-    return () => {
-      unsubscribeAuth();
-    };
+    return () => unsubscribeAuth();
   }, []);
 
   const handleLogout = async () => {
@@ -94,38 +97,36 @@ export function UserNav({ userProfile }: { userProfile: UserProfile | null }) {
 
   const handleProfileUpdate = async () => {
     if (!user) return;
-    if (!selectedFile && statusNote === (userProfile?.statusNote || "")) {
+    const hasProfileChanged = !!selectedFile;
+    const hasStatusChanged = statusNote !== (appStatus?.note || "");
+    if (!hasProfileChanged && !hasStatusChanged) {
         toast({ title: "Tidak ada perubahan", description: "Tidak ada data baru untuk disimpan." });
         return;
     }
     
     setIsUploading(true);
     try {
-      const profileDocRef = doc(db, "userProfiles", user.uid);
-      const updates: { photoURL?: string, statusNote?: string } = {};
+        if (hasProfileChanged && selectedFile) {
+            const profileDocRef = doc(db, "userProfiles", user.uid);
+            const photoURL = await fileToDataUri(selectedFile);
+            await setDoc(profileDocRef, { photoURL }, { merge: true });
+        }
 
-      if (selectedFile) {
-        updates.photoURL = await fileToDataUri(selectedFile);
-      }
-      if (statusNote !== (userProfile?.statusNote || "")) {
-        updates.statusNote = statusNote;
-      }
+        if (hasStatusChanged) {
+            const statusDocRef = doc(db, "app_status", "latest");
+            await setDoc(statusDocRef, {
+                note: statusNote,
+                updatedBy: sessionInfo?.name || "Pengguna",
+                updatedAt: serverTimestamp(),
+            });
+        }
       
-      await setDoc(profileDocRef, updates, { merge: true });
-
-      toast({
-        title: "Sukses",
-        description: "Profil berhasil diperbarui.",
-      });
-
+      toast({ title: "Sukses", description: "Perubahan berhasil disimpan." });
       setIsProfileDialogOpen(false);
+
     } catch (error) {
-      console.error("Profile update error:", error);
-      toast({
-        variant: "destructive",
-        title: "Gagal",
-        description: "Gagal memperbarui profil.",
-      });
+      console.error("Update error:", error);
+      toast({ variant: "destructive", title: "Gagal", description: "Gagal menyimpan perubahan." });
     } finally {
       setIsUploading(false);
     }
@@ -133,7 +134,8 @@ export function UserNav({ userProfile }: { userProfile: UserProfile | null }) {
   
   const openDialog = () => {
     setPreviewUrl(userProfile?.photoURL || null);
-    setStatusNote(userProfile?.statusNote || "");
+    setStatusNote(appStatus?.note || "");
+    setLastUpdatedBy(appStatus?.updatedBy || null);
     setSelectedFile(null);
     setIsProfileDialogOpen(true);
   }
@@ -166,7 +168,7 @@ export function UserNav({ userProfile }: { userProfile: UserProfile | null }) {
           <DropdownMenuGroup>
             <DropdownMenuItem onSelect={openDialog}>
               <Edit className="mr-2 h-4 w-4" />
-              <span>Profil & Catatan</span>
+              <span>Profil & Status Global</span>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
@@ -179,9 +181,9 @@ export function UserNav({ userProfile }: { userProfile: UserProfile | null }) {
       <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Profil & Catatan</DialogTitle>
+            <DialogTitle>Profil & Status Global</DialogTitle>
             <DialogDescription>
-              Ubah foto profil atau perbarui catatan status Anda.
+              Ubah foto profil atau perbarui catatan status untuk seluruh tim.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-6 py-4">
@@ -210,16 +212,21 @@ export function UserNav({ userProfile }: { userProfile: UserProfile | null }) {
               </div>
 
               <div className="space-y-2">
-                 <Label htmlFor="status-note" className="text-sm font-medium">Catatan/Status</Label>
+                 <Label htmlFor="status-note" className="text-sm font-medium">Catatan/Status (Global)</Label>
                  <Textarea 
                    id="status-note"
-                   placeholder="Lagi sibuk..."
+                   placeholder="Toko sudah mau tutup, dll."
                    value={statusNote}
                    onChange={(e) => setStatusNote(e.target.value)}
                    disabled={isUploading}
                    maxLength={100}
                  />
-                 <p className="text-xs text-muted-foreground text-right">{statusNote.length} / 100</p>
+                 <div className='flex justify-between items-center'>
+                    {lastUpdatedBy && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1"><Info size={12}/> Terakhir diubah oleh {lastUpdatedBy}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground text-right flex-1">{statusNote.length} / 100</p>
+                 </div>
               </div>
           </div>
           <DialogFooter>

@@ -51,7 +51,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
   const [isSubmittingSession, setIsSubmittingSession] = useState(false);
   const { sendNotification } = useBrowserNotifications();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [appStatus, setAppStatus] = useState<string | null>(null);
+  const [appStatus, setAppStatus] = useState<AppStatus | null>(null);
 
 
   const sessionForm = useForm<z.infer<typeof sessionFormSchema>>({
@@ -116,7 +116,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
         // Listen to global app status
         const statusDocRef = doc(db, "app_status", "latest");
         unsubscribeStatus = onSnapshot(statusDocRef, (docSnap) => {
-            setAppStatus(docSnap.exists() ? (docSnap.data() as AppStatus).note : null);
+            setAppStatus(docSnap.exists() ? (docSnap.data() as AppStatus) : null);
         });
       }
     });
@@ -204,12 +204,12 @@ function InnerLayout({ children }: { children: ReactNode }) {
                 />
             </Link>
             <div className="flex flex-1 items-center justify-end gap-2">
-                {appStatus && (
-                    <div className="hidden sm:flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5 text-xs text-muted-foreground shadow font-headline">
-                      {appStatus}
+                {appStatus && appStatus.note && (
+                    <div className="hidden sm:flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5 text-xs text-muted-foreground shadow-sm font-headline">
+                      {appStatus.note}
                     </div>
                 )}
-              <UserNav userProfile={userProfile} />
+              <UserNav userProfile={userProfile} appStatus={appStatus} />
             </div>
         </header>
 
