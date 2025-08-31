@@ -9,22 +9,22 @@ import type { Product } from "@/lib/types";
 // N8N_API_KEY=your_super_secret_api_key_here
 
 const authenticateRequest = (req: NextRequest) => {
+    // 1. Get the API Key stored securely on the Vercel server.
     const serverApiKey = process.env.N8N_API_KEY;
 
-    // 1. Check if the server even has an API key configured.
+    // 2. Critical check: If the server doesn't have a key, block everything.
     if (!serverApiKey) {
         console.error("CRITICAL: N8N_API_KEY is not configured on the Vercel server.");
         return false;
     }
 
-    // 2. Get the full 'Authorization' header from the incoming request.
-    // This is a more robust way to get the header, insensitive to case.
+    // 3. Get the full 'Authorization' header from the incoming request.
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
         return false; // No Authorization header was sent.
     }
 
-    // 3. Check if the header is in the format "Bearer <token>"
+    // 4. Check if the header is in the format "Bearer <token>"
     const parts = authHeader.split(' ');
     if (parts.length !== 2 || parts[0] !== 'Bearer') {
         return false; // Header is not in the correct Bearer format.
@@ -32,7 +32,7 @@ const authenticateRequest = (req: NextRequest) => {
     
     const submittedToken = parts[1];
 
-    // 4. Directly and securely compare the submitted token with the server's API key.
+    // 5. Directly and securely compare the submitted token with the server's API key.
     return submittedToken === serverApiKey;
 }
 
