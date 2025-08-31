@@ -9,6 +9,7 @@ import type { Product } from "@/lib/types";
 // N8N_API_KEY=your_super_secret_api_key_here
 
 const authenticateRequest = (req: NextRequest) => {
+    console.log("Authenticating request...");
     // 1. Get the securely stored API Key from server environment variables
     const serverApiKey = process.env.N8N_API_KEY;
 
@@ -23,6 +24,7 @@ const authenticateRequest = (req: NextRequest) => {
     
     // 4. Check if the header exists and is in the correct "Bearer <token>" format.
     if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
+        console.log("Authentication failed: Missing or malformed Authorization header.");
         return false; 
     }
 
@@ -30,7 +32,13 @@ const authenticateRequest = (req: NextRequest) => {
     const submittedToken = authHeader.substring(7); // "Bearer ".length is 7
 
     // 6. Directly and securely compare the submitted token with the server's API key.
-    return submittedToken === serverApiKey;
+    const isAuthenticated = submittedToken === serverApiKey;
+    if (!isAuthenticated) {
+        console.log("Authentication failed: Invalid token.");
+    } else {
+        console.log("Authentication successful.");
+    }
+    return isAuthenticated;
 }
 
 /**
@@ -61,9 +69,11 @@ export async function GET(req: NextRequest) {
     }
 
     try {
+        console.log("Fetching products from Firestore...");
         const productsCollection = collection(db, "products");
         const productSnapshot = await getDocs(productsCollection);
         const productList = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Product[];
+        console.log(`Successfully fetched ${productList.length} products.`);
         return NextResponse.json(productList, { status: 200 });
     } catch (error: any) {
         console.error("Error fetching products:", error);
