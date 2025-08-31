@@ -1,6 +1,6 @@
 
 import { NextResponse, type NextRequest } from "next/server";
-import { collection, getDocs, doc, writeBatch, runTransaction } from "firebase/firestore";
+import { collection, getDocs, doc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Product } from "@/lib/types";
 
@@ -9,25 +9,25 @@ import type { Product } from "@/lib/types";
 // N8N_API_KEY=your_super_secret_api_key_here
 
 const authenticateRequest = (req: NextRequest) => {
-    // 1. Get the API Key stored securely on the Vercel server.
+    // 1. Get the securely stored API Key from server environment variables
     const serverApiKey = process.env.N8N_API_KEY;
 
     // 2. Critical check: If the server doesn't have a key, block everything.
     if (!serverApiKey) {
-        console.error("CRITICAL: N8N_API_KEY is not configured on the Vercel server.");
+        console.error("CRITICAL: N8N_API_KEY is not configured on the server.");
         return false;
     }
 
-    // 3. Get the full 'Authorization' header from the incoming request.
-    const authHeader = req.headers.get('Authorization');
+    // 3. Get the 'Authorization' header from the incoming request.
+    const authHeader = req.headers.get('authorization');
     
-    // 4. Check if the header exists and is in the correct format "Bearer <token>"
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // 4. Check if the header exists and is in the correct "Bearer <token>" format.
+    if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
         return false; 
     }
 
     // 5. Extract the token from the header.
-    const submittedToken = authHeader.substring(7);
+    const submittedToken = authHeader.substring(7); // "Bearer ".length is 7
 
     // 6. Directly and securely compare the submitted token with the server's API key.
     return submittedToken === serverApiKey;
