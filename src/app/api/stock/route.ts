@@ -19,7 +19,7 @@ const authenticateRequest = (req: NextRequest) => {
         return false; 
     }
 
-    const submittedToken = authHeader.substring(7); // "Bearer ".length is 7
+    const submittedToken = authHeader.substring(7);
 
     if (submittedToken === serverApiKey) {
       console.log("Authentication successful.");
@@ -65,12 +65,13 @@ export async function GET(req: NextRequest) {
         console.log(`Successfully fetched ${productList.length} products.`);
         return NextResponse.json(productList, { status: 200 });
     } catch (error: any) {
-        console.error("Error fetching products:", error);
-        // Firebase permission errors have a specific code
-        if (error.code === 'permission-denied') {
-             return NextResponse.json({ message: `Internal Server Error: Missing or insufficient permissions.` }, { status: 500 });
-        }
-        return NextResponse.json({ message: `Internal Server Error: ${error.message}` }, { status: 500 });
+        console.error("Firestore Error Code:", error.code);
+        console.error("Firestore Error Message:", error.message);
+        
+        // Memberikan pesan error yang lebih spesifik dan jujur
+        const errorMessage = `Failed to fetch from Firestore. Code: ${error.code}. Message: ${error.message}`;
+        
+        return NextResponse.json({ message: `Internal Server Error: ${errorMessage}` }, { status: 500 });
     }
 }
 
@@ -146,10 +147,12 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ message: "Stock updated successfully." }, { status: 200 });
 
     } catch (error: any) {
-        console.error("Error updating stock:", error);
-        if (error.code === 'permission-denied') {
-             return NextResponse.json({ message: `Internal Server Error: Missing or insufficient permissions.` }, { status: 500 });
-        }
-        return NextResponse.json({ message: `Internal Server Error: ${error.message}` }, { status: 500 });
+        console.error("Firestore Error Code:", error.code);
+        console.error("Firestore Error Message:", error.message);
+
+        // Memberikan pesan error yang lebih spesifik dan jujur
+        const errorMessage = `Failed to update stock in Firestore. Code: ${error.code}. Message: ${error.message}`;
+
+        return NextResponse.json({ message: `Internal Server Error: ${errorMessage}` }, { status: 500 });
     }
 }
