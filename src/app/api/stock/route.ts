@@ -19,7 +19,8 @@ const getApiKey = () => {
 }
 
 const authenticateRequest = (req: NextRequest) => {
-    const authHeader = req.headers.get('authorization');
+    // FIX: Make header lookup case-insensitive by checking both 'authorization' and 'Authorization'
+    const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
     const apiKey = getApiKey();
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
