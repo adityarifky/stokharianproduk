@@ -9,36 +9,29 @@ import type { Product } from "@/lib/types";
 // N8N_API_KEY=your_super_secret_api_key_here
 
 const authenticateRequest = (req: NextRequest) => {
-    console.log("Authenticating request...");
-    // 1. Get the securely stored API Key from server environment variables
     const serverApiKey = process.env.N8N_API_KEY;
 
-    // 2. Critical check: If the server doesn't have a key, block everything.
     if (!serverApiKey) {
         console.error("CRITICAL: N8N_API_KEY is not configured on the server.");
         return false;
     }
 
-    // 3. Get the 'Authorization' header from the incoming request.
     const authHeader = req.headers.get('authorization');
     
-    // 4. Check if the header exists and is in the correct "Bearer <token>" format.
     if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
         console.log("Authentication failed: Missing or malformed Authorization header.");
         return false; 
     }
 
-    // 5. Extract the token from the header.
     const submittedToken = authHeader.substring(7); // "Bearer ".length is 7
 
-    // 6. Directly and securely compare the submitted token with the server's API key.
-    const isAuthenticated = submittedToken === serverApiKey;
-    if (!isAuthenticated) {
-        console.log("Authentication failed: Invalid token.");
+    if (submittedToken === serverApiKey) {
+      console.log("Authentication successful.");
+      return true;
     } else {
-        console.log("Authentication successful.");
+      console.log("Authentication failed: Invalid token.");
+      return false;
     }
-    return isAuthenticated;
 }
 
 /**
@@ -77,6 +70,10 @@ export async function GET(req: NextRequest) {
         return NextResponse.json(productList, { status: 200 });
     } catch (error: any) {
         console.error("Error fetching products:", error);
+        // Firebase permission errors have a specific code
+        if (error.code === 'permission-denied') {
+             return NextResponse.json({ message: `Internal Server Error: Missing or insufficient permissions.` }, { status: 500 });
+        }
         return NextResponse.json({ message: `Internal Server Error: ${error.message}` }, { status: 500 });
     }
 }
@@ -154,6 +151,9 @@ export async function POST(req: NextRequest) {
 
     } catch (error: any) {
         console.error("Error updating stock:", error);
+        if (error.code === 'permission-denied') {
+             return NextResponse.json({ message: `Internal Server Error: Missing or insufficient permissions.` }, { status: 500 });
+        }
         return NextResponse.json({ message: `Internal Server Error: ${error.message}` }, { status: 500 });
     }
 }
