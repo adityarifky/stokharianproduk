@@ -4,7 +4,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from "next/navigation";
 import { signOut, onAuthStateChanged, type User } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,7 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 import { LogOut, User as UserIcon, Loader2, Camera, Edit } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { useSession } from '@/context/SessionContext';
-import type { UserProfile } from '@/lib/types';
+import type { UserProfile, AppStatus } from '@/lib/types';
 
 
 // Helper to convert file to Data URI
@@ -59,10 +59,22 @@ export function UserNav({ userProfile }: { userProfile: UserProfile | null }) {
       setUser(currentUser);
     });
 
-    return () => {
-      unsubscribeAuth();
-    };
+    return () => unsubscribeAuth();
   }, []);
+  
+  // Listen to global app status for editing
+  useEffect(() => {
+    if (!isProfileDialogOpen) return;
+
+    const statusDocRef = doc(db, "app_status", "latest");
+    const unsubscribe = onSnapshot(statusDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setStatusNote((docSnap.data() as AppStatus).note);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [isProfileDialogOpen]);
 
   const handleLogout = async () => {
     try {
@@ -79,7 +91,7 @@ export function UserNav({ userProfile }: { userProfile: UserProfile | null }) {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 1024 * 1024) { // 1MB limit for Data URI in Firestore
+      if (file.size > 1024 * 1024) { // 1MB limit
         toast({
           variant: "destructive",
           title: "Ukuran Gambar Terlalu Besar",
@@ -93,38 +105,37 @@ export function UserNav({ userProfile }: { userProfile: UserProfile | null }) {
   };
 
   const handleProfileUpdate = async () => {
-    if (!user) return;
-    if (!selectedFile && statusNote === (userProfile?.statusNote || "")) {
-        toast({ title: "Tidak ada perubahan", description: "Tidak ada data baru untuk disimpan." });
-        return;
-    }
+    if (!user || !sessionInfo) return;
     
     setIsUploading(true);
     try {
-      const profileDocRef = doc(db, "userProfiles", user.uid);
-      const updates: { photoURL?: string, statusNote?: string } = {};
+      // Update global app status
+      const statusDocRef = doc(db, "app_status", "latest");
+      await setDoc(statusDocRef, { 
+        note: statusNote,
+        updatedBy: sessionInfo.name,
+        timestamp: serverTimestamp(),
+      });
 
+      // Update user's personal photo if changed
       if (selectedFile) {
-        updates.photoURL = await fileToDataUri(selectedFile);
+        const profileDocRef = doc(db, "userProfiles", user.uid);
+        const photoURL = await fileToDataUri(selectedFile);
+        await setDoc(profileDocRef, { photoURL }, { merge: true });
       }
-      if (statusNote !== (userProfile?.statusNote || "")) {
-        updates.statusNote = statusNote;
-      }
-      
-      await setDoc(profileDocRef, updates, { merge: true });
 
       toast({
         title: "Sukses",
-        description: "Profil berhasil diperbarui.",
+        description: "Profil & Catatan Global berhasil diperbarui.",
       });
 
       setIsProfileDialogOpen(false);
     } catch (error) {
-      console.error("Profile update error:", error);
+      console.error("Profile/Status update error:", error);
       toast({
         variant: "destructive",
         title: "Gagal",
-        description: "Gagal memperbarui profil.",
+        description: "Gagal memperbarui profil atau catatan.",
       });
     } finally {
       setIsUploading(false);
@@ -133,7 +144,6 @@ export function UserNav({ userProfile }: { userProfile: UserProfile | null }) {
   
   const openDialog = () => {
     setPreviewUrl(userProfile?.photoURL || null);
-    setStatusNote(userProfile?.statusNote || "");
     setSelectedFile(null);
     setIsProfileDialogOpen(true);
   }
@@ -179,14 +189,14 @@ export function UserNav({ userProfile }: { userProfile: UserProfile | null }) {
       <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Profil & Catatan</DialogTitle>
+            <DialogTitle>Profil & Catatan Global</DialogTitle>
             <DialogDescription>
-              Ubah foto profil atau perbarui catatan status Anda.
+              Ubah foto profil pribadimu atau perbarui catatan yang tampil untuk semua pengguna.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-6 py-4">
               <div className="space-y-4">
-                <Label className="text-sm font-medium text-center block">Foto Profil</Label>
+                <Label className="text-sm font-medium text-center block">Foto Profil (Pribadi)</Label>
                 <div className="flex flex-col items-center gap-2">
                   <Avatar className="h-20 w-20">
                       <AvatarImage src={previewUrl || "https://placehold.co/100x100.png"} alt="Pratinjau Profil" data-ai-hint="user avatar preview" />
@@ -210,10 +220,10 @@ export function UserNav({ userProfile }: { userProfile: UserProfile | null }) {
               </div>
 
               <div className="space-y-2">
-                 <Label htmlFor="status-note" className="text-sm font-medium">Catatan/Status</Label>
+                 <Label htmlFor="status-note" className="text-sm font-medium">Catatan/Status (Global)</Label>
                  <Textarea 
                    id="status-note"
-                   placeholder="Lagi sibuk..."
+                   placeholder="Contoh: Diskon 10% hari ini!"
                    value={statusNote}
                    onChange={(e) => setStatusNote(e.target.value)}
                    disabled={isUploading}
@@ -236,5 +246,3 @@ export function UserNav({ userProfile }: { userProfile: UserProfile | null }) {
     </>
   );
 }
-
-    

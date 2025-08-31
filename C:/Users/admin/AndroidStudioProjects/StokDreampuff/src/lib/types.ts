@@ -1,3 +1,4 @@
+
 import { Timestamp } from "firebase/firestore";
 
 export interface Product {
@@ -72,7 +73,11 @@ export interface StockUpdateHistory {
 
 export interface UserProfile {
   photoURL?: string;
-  statusNote?: string;
+  // statusNote is deprecated, moved to AppStatus
 }
 
-    
+export interface AppStatus {
+    note: string;
+    updatedBy: string;
+    timestamp: Timestamp;
+}
