@@ -1,26 +1,31 @@
 
 import { NextResponse, type NextRequest } from "next/server";
-import { collection, getDocs, doc, writeBatch } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase"; // Menggunakan koneksi admin
 import type { Product } from "@/lib/types";
 
+// Fungsi otentikasi yang lebih sederhana dan kuat
 const authenticateRequest = (req: NextRequest) => {
     const serverApiKey = process.env.N8N_API_KEY;
 
     if (!serverApiKey) {
-        console.error("CRITICAL: N8N_API_KEY is not configured on the server.");
+        console.error("CRITICAL: N8N_API_KEY environment variable is not set on the server.");
         return false;
     }
 
     const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+        console.log("Authentication failed: Missing Authorization header.");
+        return false;
+    }
     
-    if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
-        console.log("Authentication failed: Missing or malformed Authorization header.");
-        return false; 
+    // Memeriksa format "Bearer <token>"
+    const parts = authHeader.split(' ');
+    if (parts.length !== 2 || parts[0].toLowerCase() !== 'bearer') {
+        console.log("Authentication failed: Malformed Authorization header.");
+        return false;
     }
 
-    const submittedToken = authHeader.substring(7);
-
+    const submittedToken = parts[1];
     if (submittedToken === serverApiKey) {
       console.log("Authentication successful.");
       return true;
@@ -41,12 +46,6 @@ const authenticateRequest = (req: NextRequest) => {
  *     responses:
  *       200:
  *         description: A list of products.
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Product'
  *       401:
  *         description: Unauthorized. API Key is missing or invalid.
  *       500:
@@ -58,17 +57,22 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        console.log("Fetching products from Firestore collection: 'products'...");
-        const productsCollection = collection(db, "products");
-        const productSnapshot = await getDocs(productsCollection);
+        console.log("Fetching products from Firestore using Admin SDK...");
+        const productsCollection = adminDb.collection("products");
+        const productSnapshot = await productsCollection.get();
+        
+        if (productSnapshot.empty) {
+            console.log("No products found in the 'products' collection.");
+            return NextResponse.json([], { status: 200 });
+        }
+
         const productList = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Product[];
         console.log(`Successfully fetched ${productList.length} products.`);
         return NextResponse.json(productList, { status: 200 });
+
     } catch (error: any) {
-        console.error("Firestore Error Code:", error.code);
-        console.error("Firestore Error Message:", error.message);
+        console.error("Firestore Admin SDK Error:", error);
         
-        // Memberikan pesan error yang lebih spesifik dan jujur
         const errorMessage = `Failed to fetch from Firestore. Code: ${error.code}. Message: ${error.message}`;
         
         return NextResponse.json({ message: `Internal Server Error: ${errorMessage}` }, { status: 500 });
@@ -81,7 +85,7 @@ export async function GET(req: NextRequest) {
  * /api/stock:
  *   post:
  *     summary: Update stock for one or more products.
- *     description: Updates the stock count for multiple products in a single atomic transaction. Requires API Key authentication.
+ *     description: Updates the stock count for multiple products in a single atomic transaction.
  *     security:
  *       - BearerAuth: []
  *     requestBody:
@@ -98,22 +102,17 @@ export async function GET(req: NextRequest) {
  *                   properties:
  *                     id:
  *                       type: string
- *                       description: The ID of the product to update.
  *                     stock:
  *                       type: integer
- *                       description: The new stock count.
- *                   required:
- *                     - id
- *                     - stock
  *     responses:
  *       200:
  *         description: Stock updated successfully.
  *       400:
- *         description: Bad Request. Invalid payload format.
+ *         description: Bad Request.
  *       401:
- *         description: Unauthorized. API Key is missing or invalid.
+ *         description: Unauthorized.
  *       500:
- *         description: Internal Server Error or transaction failed.
+ *         description: Internal Server Error.
  */
 interface StockUpdate {
     id: string;
@@ -130,16 +129,16 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         updates = body.updates;
         if (!Array.isArray(updates) || updates.some(u => typeof u.id !== 'string' || typeof u.stock !== 'number')) {
-            throw new Error("Invalid payload format. 'updates' must be an array of objects with 'id' (string) and 'stock' (number).");
+            throw new Error("Invalid payload format.");
         }
     } catch (error: any) {
         return NextResponse.json({ message: `Bad Request: ${error.message}` }, { status: 400 });
     }
 
     try {
-        const batch = writeBatch(db);
+        const batch = adminDb.batch();
         updates.forEach(update => {
-            const productRef = doc(db, "products", update.id);
+            const productRef = adminDb.collection("products").doc(update.id);
             batch.update(productRef, { stock: update.stock });
         });
         await batch.commit();
@@ -147,12 +146,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ message: "Stock updated successfully." }, { status: 200 });
 
     } catch (error: any) {
-        console.error("Firestore Error Code:", error.code);
-        console.error("Firestore Error Message:", error.message);
-
-        // Memberikan pesan error yang lebih spesifik dan jujur
+        console.error("Firestore Admin SDK Error:", error);
         const errorMessage = `Failed to update stock in Firestore. Code: ${error.code}. Message: ${error.message}`;
-
         return NextResponse.json({ message: `Internal Server Error: ${errorMessage}` }, { status: 500 });
     }
 }
