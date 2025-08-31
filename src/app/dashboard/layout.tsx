@@ -224,8 +224,8 @@ function InnerLayout({ children }: { children: ReactNode }) {
           )}
         </main>
         
-        <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background p-1 md:hidden">
-            <div className="flex w-full overflow-x-auto">
+        <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background p-1">
+            <div className="flex w-full overflow-x-auto justify-center">
                  {menuItems.map((item) => (
                     <Link
                         key={item.label}
