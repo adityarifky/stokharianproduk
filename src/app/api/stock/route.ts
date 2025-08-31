@@ -8,35 +8,32 @@ import type { Product } from "@/lib/types";
 // and add your secret API key like this:
 // N8N_API_KEY=your_super_secret_api_key_here
 
-const getApiKey = () => {
-    // In Vercel, this variable MUST be set in the project's Environment Variables settings.
-    // This will be read from the server environment.
-    const apiKey = process.env.N8N_API_KEY;
-    return apiKey;
-}
-
 const authenticateRequest = (req: NextRequest) => {
-    const apiKey = getApiKey();
-    // If the API key is not configured on the server, block all requests.
-    if (!apiKey) {
-        console.error("N8N_API_KEY is not configured on the server.");
+    // This is the Vercel-recommended way to access environment variables in Edge Functions.
+    const serverApiKey = process.env.N8N_API_KEY;
+
+    // 1. Check if the API key is configured on the server at all.
+    if (!serverApiKey) {
+        console.error("CRITICAL: N8N_API_KEY is not configured on the Vercel server.");
         return false;
     }
 
-    // Check for 'authorization' (lowercase) first, then 'Authorization' (uppercase)
-    const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
-
-    // Ensure the header exists and is in the correct "Bearer <token>" format.
-    if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
-        return false;
+    // 2. Get the full 'Authorization' header from the incoming request.
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+        return false; // No Authorization header was sent.
     }
 
-    // Extract the token by removing "Bearer ".
+    // 3. Check if the header is in the format "Bearer <token>"
+    if (!authHeader.toLowerCase().startsWith('bearer ')) {
+        return false; // Header is not in the correct Bearer format.
+    }
+
+    // 4. Extract the token by removing "Bearer " (7 characters)
     const submittedToken = authHeader.substring(7);
 
-    // Securely compare the submitted token with the server's API key.
-    // This comparison is case-sensitive.
-    return submittedToken === apiKey;
+    // 5. Directly and securely compare the submitted token with the server's API key.
+    return submittedToken === serverApiKey;
 }
 
 /**
