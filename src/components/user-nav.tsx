@@ -29,7 +29,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
 import { LogOut, User as UserIcon, Loader2, Camera, Edit, Info } from "lucide-react";
-import { auth, db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase/client";
 import { useSession } from '@/context/SessionContext';
 import type { UserProfile, AppStatus } from '@/lib/types';
 

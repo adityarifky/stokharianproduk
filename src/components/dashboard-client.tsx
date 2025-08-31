@@ -26,7 +26,7 @@ import {
 } from "recharts";
 
 import type { Product, SaleHistory, StockUpdateHistory } from "@/lib/types";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase/client";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from "@/context/SessionContext";

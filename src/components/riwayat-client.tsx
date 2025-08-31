@@ -9,7 +9,7 @@ import { format } from "date-fns";
 import { id as IndonesianLocale } from "date-fns/locale";
 import type { DateRange } from "react-day-picker";
 
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase/client";
 import type { SaleHistory, StockUpdateHistory } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

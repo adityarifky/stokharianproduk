@@ -1,6 +1,6 @@
 
 import { NextResponse, type NextRequest } from "next/server";
-import { adminDb } from "@/lib/firebase"; // Menggunakan koneksi admin
+import { adminDb } from "@/lib/firebase/server"; // Menggunakan koneksi admin
 import type { Product } from "@/lib/types";
 
 // Fungsi otentikasi yang lebih sederhana dan kuat

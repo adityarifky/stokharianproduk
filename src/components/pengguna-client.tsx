@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { collection, query, onSnapshot, orderBy, where } from "firebase/firestore";
 import { Loader2 } from "lucide-react";
 
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase/client";
 import type { UserSession } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

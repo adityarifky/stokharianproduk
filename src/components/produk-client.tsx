@@ -11,7 +11,7 @@ import { collection, query, onSnapshot, doc, deleteDoc, updateDoc, writeBatch, s
 import { Loader2, Trash2, Plus, RotateCcw, Camera, Pencil, ChefHat } from "lucide-react";
 import ReactCrop, { type Crop, type PixelCrop, centerCrop, makeAspectCrop } from 'react-image-crop';
 
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase/client";
 import type { Product, ReportItem, SaleHistory } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -58,7 +58,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { Label } from '@/components/ui/label';
 import { useSession } from '@/context/SessionContext';
 import { ImagePreviewDialog } from './image-preview-dialog';
 import { cn } from '@/lib/utils';

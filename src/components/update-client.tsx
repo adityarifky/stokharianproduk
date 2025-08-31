@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import type { Product, SaleHistoryItem } from "@/lib/types";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase/client";
 import {
   collection,
   query,
