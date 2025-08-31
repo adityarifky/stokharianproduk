@@ -31,7 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SessionProvider, useSession } from "@/context/SessionContext";
 import { cn } from "@/lib/utils";
 import { useBrowserNotifications } from "@/hooks/use-browser-notifications";
-import type { UserProfile } from "@/lib/types";
+import type { UserProfile, AppStatus } from "@/lib/types";
 
 const sessionFormSchema = z.object({
   name: z.string().min(1, "Nama harus diisi."),
@@ -51,6 +51,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
   const [isSubmittingSession, setIsSubmittingSession] = useState(false);
   const { sendNotification } = useBrowserNotifications();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [appStatus, setAppStatus] = useState<string | null>(null);
 
 
   const sessionForm = useForm<z.infer<typeof sessionFormSchema>>({
@@ -60,6 +61,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let unsubscribeProfile: () => void = () => {};
+    let unsubscribeStatus: () => void = () => {};
 
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       if (!currentUser) {
@@ -110,11 +112,18 @@ function InnerLayout({ children }: { children: ReactNode }) {
         unsubscribeProfile = onSnapshot(profileDocRef, (docSnap) => {
           setUserProfile(docSnap.exists() ? (docSnap.data() as UserProfile) : null);
         });
+
+        // Listen to global app status
+        const statusDocRef = doc(db, "app_status", "latest");
+        unsubscribeStatus = onSnapshot(statusDocRef, (docSnap) => {
+            setAppStatus(docSnap.exists() ? (docSnap.data() as AppStatus).note : null);
+        });
       }
     });
     return () => {
       unsubscribeAuth();
       unsubscribeProfile();
+      unsubscribeStatus();
     };
   }, [router, toast, setSessionEstablished, setSessionInfo]);
   
@@ -195,9 +204,9 @@ function InnerLayout({ children }: { children: ReactNode }) {
                 />
             </Link>
             <div className="flex flex-1 items-center justify-end gap-2">
-                {userProfile?.statusNote && (
+                {appStatus && (
                     <div className="hidden sm:flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5 text-xs text-muted-foreground shadow font-headline">
-                      {userProfile.statusNote}
+                      {appStatus}
                     </div>
                 )}
               <UserNav userProfile={userProfile} />
@@ -215,14 +224,14 @@ function InnerLayout({ children }: { children: ReactNode }) {
           )}
         </main>
         
-        <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background p-1">
-            <div className="grid w-full grid-cols-6">
+        <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background p-1 md:hidden">
+            <div className="flex w-full overflow-x-auto">
                  {menuItems.map((item) => (
                     <Link
                         key={item.label}
                         href={item.href}
                         className={cn(
-                            "flex flex-col items-center justify-center gap-1 rounded-lg p-2 text-muted-foreground",
+                            "flex flex-col items-center justify-center gap-1 rounded-lg p-2 text-muted-foreground flex-shrink-0 w-24",
                             (pathname.startsWith(item.href) && (item.href !== "/dashboard" || pathname === "/dashboard"))
                             ? "bg-muted font-medium text-primary"
                             : "hover:text-primary",
@@ -231,7 +240,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
                         aria-disabled={!sessionEstablished}
                     >
                         <item.icon className="h-5 w-5" />
-                        <span className="text-xs">{item.label}</span>
+                        <span className="text-xs text-center">{item.label}</span>
                     </Link>
                 ))}
             </div>
