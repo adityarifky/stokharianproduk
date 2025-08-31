@@ -1,6 +1,7 @@
 
 'use client';
 
+import './globals.css';
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -32,6 +33,7 @@ import { SessionProvider, useSession } from "@/context/SessionContext";
 import { cn } from "@/lib/utils";
 import { useBrowserNotifications } from "@/hooks/use-browser-notifications";
 import type { UserProfile, AppStatus } from "@/lib/types";
+import { Toaster } from '@/components/ui/toaster';
 
 const sessionFormSchema = z.object({
   name: z.string().min(1, "Nama harus diisi."),
@@ -40,7 +42,7 @@ const sessionFormSchema = z.object({
   }),
 });
 
-function InnerLayout({ children }: { children: ReactNode }) {
+function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
@@ -53,7 +55,6 @@ function InnerLayout({ children }: { children: ReactNode }) {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [appStatus, setAppStatus] = useState<string | null>(null);
 
-
   const sessionForm = useForm<z.infer<typeof sessionFormSchema>>({
     resolver: zodResolver(sessionFormSchema),
     defaultValues: { name: "", position: undefined },
@@ -65,7 +66,11 @@ function InnerLayout({ children }: { children: ReactNode }) {
 
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       if (!currentUser) {
-        router.push("/");
+        if (pathname.startsWith('/dashboard')) {
+          router.push("/");
+        } else {
+            setLoading(false);
+        }
       } else {
         const lastSessionStartStr = localStorage.getItem('lastSessionStart');
         if (!lastSessionStartStr) {
@@ -107,13 +112,11 @@ function InnerLayout({ children }: { children: ReactNode }) {
         setUser(currentUser);
         setLoading(false);
 
-        // Listen to profile changes
         const profileDocRef = doc(db, "userProfiles", currentUser.uid);
         unsubscribeProfile = onSnapshot(profileDocRef, (docSnap) => {
           setUserProfile(docSnap.exists() ? (docSnap.data() as UserProfile) : null);
         });
 
-        // Listen to global app status
         const statusDocRef = doc(db, "app_status", "latest");
         unsubscribeStatus = onSnapshot(statusDocRef, (docSnap) => {
             setAppStatus(docSnap.exists() ? (docSnap.data() as AppStatus).note : null);
@@ -125,7 +128,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
       unsubscribeProfile();
       unsubscribeStatus();
     };
-  }, [router, toast, setSessionEstablished, setSessionInfo]);
+  }, [router, toast, setSessionEstablished, setSessionInfo, pathname]);
   
   useEffect(() => {
     if (user && !sessionEstablished) {
@@ -146,8 +149,6 @@ function InnerLayout({ children }: { children: ReactNode }) {
   
   const handleSessionSubmit = async (values: z.infer<typeof sessionFormSchema>) => {
     setIsSubmittingSession(true);
-
-    // Optimistic UI update
     setSessionInfo({ name: values.name, position: values.position });
     setSessionEstablished(true);
     setIsSessionDialogOpen(false);
@@ -161,7 +162,6 @@ function InnerLayout({ children }: { children: ReactNode }) {
     
     sendNotification('Sesi Baru Dimulai', { body: `${values.name} telah memulai sesi kerja.` });
 
-    // Sync with server in the background
     try {
         await addDoc(collection(db, "user_sessions"), {
             name: values.name,
@@ -312,10 +312,31 @@ function InnerLayout({ children }: { children: ReactNode }) {
   );
 }
 
-export default function DashboardLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  const pathname = usePathname();
+  const isDashboard = pathname.startsWith('/dashboard');
+
   return (
-    <SessionProvider>
-      <InnerLayout>{children}</InnerLayout>
-    </SessionProvider>
-  )
+    <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter&family=Poppins:wght@700&family=Roboto+Slab&display=swap" rel="stylesheet" />
+      </head>
+      <body className="font-body antialiased">
+          <SessionProvider>
+            {isDashboard ? (
+              <DashboardLayout>{children}</DashboardLayout>
+            ) : (
+              children
+            )}
+          </SessionProvider>
+        <Toaster />
+      </body>
+    </html>
+  );
 }
