@@ -10,24 +10,33 @@ import type { Product } from "@/lib/types";
 
 const getApiKey = () => {
     // In Vercel, this variable MUST be set in the project's Environment Variables settings.
+    // This will be read from the server environment.
     const apiKey = process.env.N8N_API_KEY;
-    if (!apiKey) {
-        console.error("N8N_API_KEY environment variable is not set.");
-        return "MISSING_API_KEY";
-    }
     return apiKey;
 }
 
 const authenticateRequest = (req: NextRequest) => {
-    // FIX: Make header lookup case-insensitive by checking both 'authorization' and 'Authorization'
-    const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
     const apiKey = getApiKey();
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // If the API key is not configured on the server, block all requests.
+    if (!apiKey) {
+        console.error("N8N_API_KEY is not configured on the server.");
         return false;
     }
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    return token === apiKey;
+
+    // Check for 'authorization' (lowercase) first, then 'Authorization' (uppercase)
+    const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
+
+    // Ensure the header exists and is in the correct "Bearer <token>" format.
+    if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
+        return false;
+    }
+
+    // Extract the token by removing "Bearer ".
+    const submittedToken = authHeader.substring(7);
+
+    // Securely compare the submitted token with the server's API key.
+    // This comparison is case-sensitive.
+    return submittedToken === apiKey;
 }
 
 /**
