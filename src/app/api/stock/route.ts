@@ -20,19 +20,16 @@ const authenticateRequest = (req: NextRequest) => {
 
     // 3. Get the full 'Authorization' header from the incoming request.
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-        return false; // No Authorization header was sent.
-    }
-
-    // 4. Check if the header is in the format "Bearer <token>"
-    const parts = authHeader.split(' ');
-    if (parts.length !== 2 || parts[0] !== 'Bearer') {
-        return false; // Header is not in the correct Bearer format.
-    }
     
-    const submittedToken = parts[1];
+    // 4. Check if the header exists and is in the correct format "Bearer <token>"
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return false; 
+    }
 
-    // 5. Directly and securely compare the submitted token with the server's API key.
+    // 5. Extract the token from the header.
+    const submittedToken = authHeader.substring(7);
+
+    // 6. Directly and securely compare the submitted token with the server's API key.
     return submittedToken === serverApiKey;
 }
 
