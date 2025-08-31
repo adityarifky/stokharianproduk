@@ -9,30 +9,30 @@ import type { Product } from "@/lib/types";
 // N8N_API_KEY=your_super_secret_api_key_here
 
 const authenticateRequest = (req: NextRequest) => {
-    // This is the Vercel-recommended way to access environment variables in Edge Functions.
     const serverApiKey = process.env.N8N_API_KEY;
 
-    // 1. Check if the API key is configured on the server at all.
+    // 1. Check if the server even has an API key configured.
     if (!serverApiKey) {
         console.error("CRITICAL: N8N_API_KEY is not configured on the Vercel server.");
         return false;
     }
 
     // 2. Get the full 'Authorization' header from the incoming request.
-    const authHeader = req.headers.get('authorization');
+    // This is a more robust way to get the header, insensitive to case.
+    const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
         return false; // No Authorization header was sent.
     }
 
     // 3. Check if the header is in the format "Bearer <token>"
-    if (!authHeader.toLowerCase().startsWith('bearer ')) {
+    const parts = authHeader.split(' ');
+    if (parts.length !== 2 || parts[0] !== 'Bearer') {
         return false; // Header is not in the correct Bearer format.
     }
+    
+    const submittedToken = parts[1];
 
-    // 4. Extract the token by removing "Bearer " (7 characters)
-    const submittedToken = authHeader.substring(7);
-
-    // 5. Directly and securely compare the submitted token with the server's API key.
+    // 4. Directly and securely compare the submitted token with the server's API key.
     return submittedToken === serverApiKey;
 }
 
