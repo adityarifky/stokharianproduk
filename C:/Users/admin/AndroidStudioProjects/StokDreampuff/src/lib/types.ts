@@ -73,7 +73,6 @@ export interface StockUpdateHistory {
 
 export interface UserProfile {
   photoURL?: string;
-  // statusNote is deprecated, moved to AppStatus
 }
 
 export interface AppStatus {
