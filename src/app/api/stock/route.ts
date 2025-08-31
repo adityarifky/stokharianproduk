@@ -4,10 +4,6 @@ import { collection, getDocs, doc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Product } from "@/lib/types";
 
-// IMPORTANT: Create a .env.local file in the root of your project
-// and add your secret API key like this:
-// N8N_API_KEY=your_super_secret_api_key_here
-
 const authenticateRequest = (req: NextRequest) => {
     const serverApiKey = process.env.N8N_API_KEY;
 
@@ -62,7 +58,7 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        console.log("Fetching products from Firestore...");
+        console.log("Fetching products from Firestore collection: 'products'...");
         const productsCollection = collection(db, "products");
         const productSnapshot = await getDocs(productsCollection);
         const productList = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Product[];
