@@ -6,14 +6,13 @@ import type { Product } from "@/lib/types";
 
 // IMPORTANT: Create a .env.local file in the root of your project
 // and add your secret API key like this:
-// NEXT_PUBLIC_N8N_API_KEY=your_super_secret_api_key_here
+// N8N_API_KEY=your_super_secret_api_key_here
 
 const getApiKey = () => {
-    // Vercel might require the NEXT_PUBLIC_ prefix to expose env vars to serverless functions.
-    // We check for both to be safe.
-    const apiKey = process.env.NEXT_PUBLIC_N8N_API_KEY || process.env.N8N_API_KEY;
+    // In Vercel, this variable MUST be set in the project's Environment Variables settings.
+    const apiKey = process.env.N8N_API_KEY;
     if (!apiKey) {
-        console.error("N8N_API_KEY or NEXT_PUBLIC_N8N_API_KEY environment variable is not set.");
+        console.error("N8N_API_KEY environment variable is not set.");
         return "MISSING_API_KEY";
     }
     return apiKey;
