@@ -69,12 +69,20 @@ export async function GET(req: NextRequest) {
         
         if (productSnapshot.empty) {
             console.log("No products found in the 'products' collection.");
-            return NextResponse.json([], { status: 200 });
+            return NextResponse.json([], { 
+                status: 200,
+                headers: { 'X-Total-Count': '0' } 
+            });
         }
 
         const productList = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Product[];
-        console.log(`Successfully fetched ${productList.length} products.`);
-        return NextResponse.json(productList, { status: 200 });
+        const totalCount = productList.length;
+        console.log(`Successfully fetched ${totalCount} products.`);
+        
+        return NextResponse.json(productList, { 
+            status: 200,
+            headers: { 'X-Total-Count': totalCount.toString() }
+        });
 
     } catch (error: any) {
         console.error("Firestore Admin SDK Error:", error);
