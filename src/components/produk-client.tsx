@@ -422,7 +422,7 @@ export function ProdukClient() {
 
   const handleResetAllStock = async () => {
     setIsLoading(true);
-
+    
     if (!sessionInfo) {
       toast({
         variant: "destructive",
@@ -433,68 +433,62 @@ export function ProdukClient() {
       setIsResetDialogOpen(false);
       return;
     }
-
+  
     try {
       const batch = writeBatch(db);
-
-      // 1. Fetch all current products to get their final stock
+  
+      // 1. Get current products state
       const productsCollection = collection(db, "products");
       const productsSnapshot = await getDocs(productsCollection);
-      const currentProducts: Product[] = [];
-      productsSnapshot.forEach(doc => {
-        currentProducts.push({ id: doc.id, ...doc.data() } as Product);
-      });
-
-      // 2. Prepare the list of "rejected" items (remaining stock)
-      const itemsRejected: ReportItem[] = currentProducts
-        .filter(p => p.stock > 0)
-        .map(p => ({
-          productName: p.name,
-          category: p.category,
-          quantity: p.stock,
-          image: p.image,
-        }));
-      const totalRejected = itemsRejected.reduce((sum, item) => sum + item.quantity, 0);
-
-      // 3. Get the timestamp of the last report to avoid double-counting sales
+      const currentProducts: Product[] = productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+  
+      // 2. Get sales history since last report
       const reportsCollection = collection(db, "daily_reports");
       const lastReportQuery = query(reportsCollection, orderBy("timestamp", "desc"), limit(1));
       const lastReportSnapshot = await getDocs(lastReportQuery);
       const lastReportTimestamp = lastReportSnapshot.empty 
-        ? new Date(0) // If no reports, fetch all history from the beginning of time
-        : lastReportSnapshot.docs[0].data().timestamp;
-
-      // 4. Fetch sales that occurred after the last report was generated
-      const salesQuery = query(
-        collection(db, "sales_history"),
-        where("timestamp", ">", lastReportTimestamp)
-      );
+        ? new Date(0)
+        : lastReportSnapshot.docs[0].data().timestamp.toDate();
+  
+      const salesQuery = query(collection(db, "sales_history"), where("timestamp", ">", lastReportTimestamp));
       const salesSnapshot = await getDocs(salesQuery);
-
-      // 5. Aggregate all sold items
-      const soldItemsMap = new Map<string, ReportItem & { productId: string }>();
+      
+      const salesAggregated = new Map<string, number>();
       salesSnapshot.docs.forEach(doc => {
-        const sale = doc.data() as Omit<SaleHistory, 'id'>;
+        const sale = doc.data() as SaleHistory;
         sale.items.forEach(item => {
-          const existing = soldItemsMap.get(item.productId);
-          if (existing) {
-            existing.quantity += item.quantity;
-          } else {
-            const productDetails = currentProducts.find(p => p.id === item.productId);
-            soldItemsMap.set(item.productId, {
-              productId: item.productId,
-              productName: item.productName,
-              quantity: item.quantity,
-              category: productDetails?.category || 'Lainnya',
-              image: item.image,
-            });
-          }
+          salesAggregated.set(item.productId, (salesAggregated.get(item.productId) || 0) + item.quantity);
         });
       });
-      const itemsSold: ReportItem[] = Array.from(soldItemsMap.values()).map(({ productId, ...rest }) => rest);
+  
+      const itemsSold: ReportItem[] = [];
+      const itemsRejected: ReportItem[] = [];
+  
+      currentProducts.forEach(p => {
+        const soldQty = salesAggregated.get(p.id) || 0;
+        if (soldQty > 0) {
+          itemsSold.push({
+            productName: p.name,
+            category: p.category,
+            quantity: soldQty,
+            image: p.image,
+          });
+        }
+        // Remaining stock is considered "rejected" for the day
+        if (p.stock > 0) {
+          itemsRejected.push({
+            productName: p.name,
+            category: p.category,
+            quantity: p.stock,
+            image: p.image,
+          });
+        }
+      });
+  
       const totalSold = itemsSold.reduce((sum, item) => sum + item.quantity, 0);
-
-      // 6. Create the report document in the batch
+      const totalRejected = itemsRejected.reduce((sum, item) => sum + item.quantity, 0);
+  
+      // 3. Create the report document if there is anything to report
       if (itemsSold.length > 0 || itemsRejected.length > 0) {
         const reportRef = doc(reportsCollection);
         batch.set(reportRef, {
@@ -506,23 +500,23 @@ export function ProdukClient() {
           totalRejected,
         });
       }
-
-      // 7. Add stock reset operations to the batch
+  
+      // 4. Reset stock for all products
       currentProducts.forEach((product) => {
         const productRef = doc(db, "products", product.id);
         batch.update(productRef, { stock: 0 });
       });
-      
-      // 8. Commit everything at once
+  
+      // 5. Commit everything
       await batch.commit();
-
+  
       toast({
         title: "Sukses!",
         description: "Laporan harian telah dibuat dan semua stok produk berhasil di-reset.",
       });
-
+  
       sendNotification('Stok Direset', { body: 'Laporan harian berhasil dibuat dan semua stok produk telah di-reset ke 0.' });
-
+  
     } catch (error: any) {
       console.error("Error generating report and resetting stock: ", error);
       toast({
@@ -1033,7 +1027,7 @@ export function ProdukClient() {
       <AlertDialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Buat Laporan & Reset Stok?</AlertDialogTitle>
+            <AlertDialogTitle>Buat Laporan &amp; Reset Stok?</AlertDialogTitle>
             <AlertDialogDescription>
               Tindakan ini akan membuat laporan harian berdasarkan stok sisa dan penjualan sejak laporan terakhir, lalu me-reset SEMUA stok produk menjadi 0. Tindakan ini tidak dapat dibatalkan.
             </AlertDialogDescription>
@@ -1051,7 +1045,7 @@ export function ProdukClient() {
                   Memproses...
                 </>
               ) : (
-                "Ya, Buat & Reset"
+                "Ya, Buat &amp; Reset"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1062,3 +1056,5 @@ export function ProdukClient() {
     </>
   );
 }
+
+    
