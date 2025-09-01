@@ -36,21 +36,6 @@ const authenticateRequest = (req: NextRequest) => {
 }
 
 
-export async function getAllProducts(): Promise<Product[]> {
-    if (!adminDb) {
-      throw new Error("Firestore Admin is not initialized.");
-    }
-    const productsCollection = adminDb.collection("products");
-    const productSnapshot = await productsCollection.get();
-    
-    if (productSnapshot.empty) {
-        return [];
-    }
-
-    return productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Product[];
-}
-
-
 /**
  * @swagger
  * /api/stock:
@@ -73,7 +58,17 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        const productList = await getAllProducts();
+        if (!adminDb) {
+          throw new Error("Firestore Admin is not initialized.");
+        }
+        const productsCollection = adminDb.collection("products");
+        const productSnapshot = await productsCollection.get();
+        
+        if (productSnapshot.empty) {
+            return NextResponse.json([], { status: 200 });
+        }
+
+        const productList = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Product[];
         const totalCount = productList.length;
         console.log(`Successfully fetched ${totalCount} products.`);
         
