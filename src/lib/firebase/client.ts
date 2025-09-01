@@ -6,13 +6,14 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 // Konfigurasi Firebase untuk sisi klien (browser)
+// GANTI SEMUA NILAI DI BAWAH INI DENGAN KREDENSIAL DARI PROYEK FIREBASE YANG BENAR
 const clientConfig: FirebaseOptions = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyDfMpLH9Pvg6g-nnd307AH5wxpXBDeWbZs",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "stokprodukharian.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "stokprodukharian",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "stokprodukharian.appspot.com",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "580169268436",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:580169268436:web:bfbd3f7e01c0b4a9e6cf41"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "GANTI_DENGAN_API_KEY_YANG_BENAR",
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "GANTI_DENGAN_AUTH_DOMAIN_YANG_BENAR",
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "GANTI_DENGAN_PROJECT_ID_YANG_BENAR",
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "GANTI_DENGAN_STORAGE_BUCKET_YANG_BENAR",
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "GANTI_DENGAN_MESSAGING_SENDER_ID_YANG_BENAR",
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "GANTI_DENGAN_APP_ID_YANG_BENAR"
 };
 
 // Inisialisasi aplikasi sisi klien
