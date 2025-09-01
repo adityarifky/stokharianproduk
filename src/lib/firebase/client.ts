@@ -7,13 +7,13 @@ import { getFirestore } from "firebase/firestore";
 
 // Konfigurasi Firebase untuk sisi klien (browser)
 const clientConfig: FirebaseOptions = {
-  apiKey: "AIzaSyAQJDNLWevpdsGkFP1rtDyyfy0mKVW4nZg",
-  authDomain: "dreampuffapp.firebaseapp.com",
-  projectId: "dreampuffapp",
-  storageBucket: "dreampuffapp.firebasestorage.app",
-  messagingSenderId: "962454426578",
-  appId: "1:962454426578:web:a59e8a8f87944893e66e0b",
-  measurementId: "G-42WX1SHRR3"
+  apiKey: "AIzaSyDfMpLH9Pvg6g-nnd307AH5wxpXBDeWbZs",
+  authDomain: "stokprodukharian.firebaseapp.com",
+  projectId: "stokprodukharian",
+  storageBucket: "stokprodukharian.firebasestorage.app",
+  messagingSenderId: "580169268436",
+  appId: "1:580169268436:web:bfbd3f7e01c0b4a9e6cf41",
+  measurementId: "G-XML0ZJ09C1"
 };
 
 // Inisialisasi aplikasi sisi klien
