@@ -35,6 +35,22 @@ const authenticateRequest = (req: NextRequest) => {
     }
 }
 
+
+export async function getAllProducts(): Promise<Product[]> {
+    if (!adminDb) {
+      throw new Error("Firestore Admin is not initialized.");
+    }
+    const productsCollection = adminDb.collection("products");
+    const productSnapshot = await productsCollection.get();
+    
+    if (productSnapshot.empty) {
+        return [];
+    }
+
+    return productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Product[];
+}
+
+
 /**
  * @swagger
  * /api/stock:
@@ -56,26 +72,8 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ message: 'Unauthorized: Invalid or missing API Key.' }, { status: 401 });
     }
 
-    // Pastikan Firebase Admin SDK sudah terinisialisasi
-    if (!adminDb) {
-      console.error("Firestore Admin is not initialized. Check server environment variables.");
-      return NextResponse.json({ message: 'Internal Server Error: Firebase configuration error.' }, { status: 500 });
-    }
-
     try {
-        console.log("Fetching products from Firestore using Admin SDK...");
-        const productsCollection = adminDb.collection("products");
-        const productSnapshot = await productsCollection.get();
-        
-        if (productSnapshot.empty) {
-            console.log("No products found in the 'products' collection.");
-            return NextResponse.json([], { 
-                status: 200,
-                headers: { 'X-Total-Count': '0' } 
-            });
-        }
-
-        const productList = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Product[];
+        const productList = await getAllProducts();
         const totalCount = productList.length;
         console.log(`Successfully fetched ${totalCount} products.`);
         
@@ -85,11 +83,8 @@ export async function GET(req: NextRequest) {
         });
 
     } catch (error: any) {
-        console.error("Firestore Admin SDK Error:", error);
-        
-        const errorMessage = `Failed to fetch from Firestore. Code: ${error.code}. Message: ${error.message}`;
-        
-        return NextResponse.json({ message: `Internal Server Error: ${errorMessage}` }, { status: 500 });
+        console.error("Error in GET /api/stock:", error);
+        return NextResponse.json({ message: `Internal Server Error: ${error.message}` }, { status: 500 });
     }
 }
 
@@ -138,7 +133,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ message: 'Unauthorized: Invalid or missing API Key.' }, { status: 401 });
     }
     
-    // Pastikan Firebase Admin SDK sudah terinisialisasi
     if (!adminDb) {
       console.error("Firestore Admin is not initialized. Check server environment variables.");
       return NextResponse.json({ message: 'Internal Server Error: Firebase configuration error.' }, { status: 500 });
