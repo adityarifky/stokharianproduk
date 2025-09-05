@@ -2,6 +2,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { adminDb } from "@/lib/firebase/server"; // Menggunakan koneksi admin
 import type { Product } from "@/lib/types";
+import { createResponseMessage, type CreateResponseInput } from "@/ai/flows/create-response-flow";
 
 // Fungsi otentikasi yang lebih sederhana dan kuat
 const authenticateRequest = (req: NextRequest) => {
@@ -86,6 +87,48 @@ export async function GET(req: NextRequest) {
 /**
  * @swagger
  * /api/stock:
+ *   patch:
+ *     summary: Generate a friendly response message using AI.
+ *     description: Takes structured stock data and uses Genkit to generate a varied, human-like response.
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateResponseInput'
+ *     responses:
+ *       200:
+ *         description: A response object containing the generated text.
+ *       400:
+ *         description: Bad Request.
+ *       401:
+ *         description: Unauthorized.
+ *       500:
+ *         description: Internal Server Error.
+ */
+export async function PATCH(req: NextRequest) {
+    if (!authenticateRequest(req)) {
+        return NextResponse.json({ message: 'Unauthorized: Invalid or missing API Key.' }, { status: 401 });
+    }
+
+    try {
+        const body: CreateResponseInput = await req.json();
+        // Memanggil flow AI perangkai kata secara langsung dari dalam server
+        const aiResponse = await createResponseMessage(body);
+        return NextResponse.json(aiResponse, { status: 200 });
+
+    } catch (error: any) {
+        console.error("Error in PATCH /api/stock:", error);
+        return NextResponse.json({ message: `Internal Server Error: ${error.message}` }, { status: 500 });
+    }
+}
+
+
+/**
+ * @swagger
+ * /api/stock:
  *   post:
  *     summary: Update stock for one or more products.
  *     description: Updates the stock count for multiple products in a single atomic transaction.
@@ -159,3 +202,4 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ message: `Internal Server Error: ${errorMessage}` }, { status: 500 });
     }
 }
+
