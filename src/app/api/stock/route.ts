@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
           throw new Error("Firestore Admin is not initialized.");
         }
         const productsCollection = adminDb.collection("products");
-        const productSnapshot = await productSnapshot.get();
+        const productSnapshot = await productsCollection.get();
         
         if (productSnapshot.empty) {
             return NextResponse.json({ dataForResponse: "Info: Stok lagi kosong semua nih, bro." }, { status: 200 });
