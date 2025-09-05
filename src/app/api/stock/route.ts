@@ -1,9 +1,6 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { adminDb } from "@/lib/firebase/server"; // Menggunakan koneksi admin
-import { createResponseMessage } from "@/ai/flows/create-response-flow";
-import type { CreateResponseInput } from "@/lib/ai-types";
-
 
 // Fungsi otentikasi yang lebih sederhana dan kuat
 const authenticateRequest = (req: NextRequest) => {
@@ -158,54 +155,5 @@ export async function POST(req: NextRequest) {
         console.error("Firestore Admin SDK Error:", error);
         const errorMessage = `Failed to update stock in Firestore. Code: ${error.code}. Message: ${error.message}`;
         return NextResponse.json({ message: `Internal Server Error: ${errorMessage}` }, { status: 500 });
-    }
-}
-
-
-/**
- * @swagger
- * /api/stock:
- *   patch:
- *     summary: Generate a response message based on stock data.
- *     description: Receives stock information and uses an AI flow to generate a human-readable response.
- *     security:
- *       - BearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/CreateResponseInput'
- *     responses:
- *       200:
- *         description: A generated response message.
- *       400:
- *         description: Bad Request.
- *       401:
- *         description: Unauthorized.
- *       500:
- *         description: Internal Server Error.
- */
-export async function PATCH(req: NextRequest) {
-    // Otentikasi opsional untuk metode PATCH, bisa diaktifkan jika perlu.
-    // if (!authenticateRequest(req)) {
-    //     return NextResponse.json({ message: 'Unauthorized: Invalid or missing API Key.' }, { status: 401 });
-    // }
-    
-    try {
-        const body = await req.json() as CreateResponseInput;
-
-        // Validasi sederhana pada body
-        if (!body.type || !body.entityName) {
-             return NextResponse.json({ message: `Bad Request: 'type' and 'entityName' are required.` }, { status: 400 });
-        }
-
-        const responseMessage = await createResponseMessage(body);
-
-        return NextResponse.json({ response: responseMessage }, { status: 200 });
-
-    } catch (error: any) {
-        console.error("Error in PATCH /api/stock:", error);
-        return NextResponse.json({ message: `Internal Server Error: ${error.message}` }, { status: 500 });
     }
 }
