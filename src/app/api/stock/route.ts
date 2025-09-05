@@ -1,8 +1,6 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { adminDb } from "@/lib/firebase/server"; // Menggunakan koneksi admin
-import { createResponseMessage } from "@/ai/flows/create-response-flow";
-import { CreateResponseInputSchema, type CreateResponseInput } from "@/lib/ai-types";
 
 // Fungsi otentikasi yang lebih sederhana dan kuat
 const authenticateRequest = (req: NextRequest) => {
@@ -79,53 +77,6 @@ export async function GET(req: NextRequest) {
 
     } catch (error: any) {
         console.error("Error in GET /api/stock:", error);
-        return NextResponse.json({ message: `Internal Server Error: ${error.message}` }, { status: 500 });
-    }
-}
-
-
-/**
- * @swagger
- * /api/stock:
- *   patch:
- *     summary: Generate a friendly response message using AI.
- *     description: Takes structured stock data and uses Genkit to generate a varied, human-like response.
- *     security:
- *       - BearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/CreateResponseInput'
- *     responses:
- *       200:
- *         description: A response object containing the generated text.
- *       400:
- *         description: Bad Request.
- *       401:
- *         description: Unauthorized.
- *       500:
- *         description: Internal Server Error.
- */
-export async function PATCH(req: NextRequest) {
-    if (!authenticateRequest(req)) {
-        return NextResponse.json({ message: 'Unauthorized: Invalid or missing API Key.' }, { status: 401 });
-    }
-
-    try {
-        const body = await req.json();
-        const parsedBody = CreateResponseInputSchema.safeParse(body);
-
-        if (!parsedBody.success) {
-          return NextResponse.json({ message: 'Bad Request: Invalid payload.', errors: parsedBody.error.flatten() }, { status: 400 });
-        }
-
-        const aiResponse = await createResponseMessage(parsedBody.data);
-        return NextResponse.json(aiResponse, { status: 200 });
-
-    } catch (error: any) {
-        console.error("Error in PATCH /api/stock:", error);
         return NextResponse.json({ message: `Internal Server Error: ${error.message}` }, { status: 500 });
     }
 }
