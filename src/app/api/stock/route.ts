@@ -87,8 +87,11 @@ export async function GET(req: NextRequest) {
         const entity = searchParams.get('entity');
 
         // Jika tidak ada intent & entity, kembalikan semua produk (untuk debug atau penggunaan lain)
-        if (!intent || !entity) {
-            return NextResponse.json(allProducts, { status: 200 });
+        if (!intent || !entity || intent === 'unknown') {
+            const productList = allProducts.map(p => p.name).join(', ');
+            const categoryList = [...new Set(allProducts.map(p => p.category))].join(', ');
+            const dataForResponse = `Aku kurang ngerti maksudmu, bro. Coba tanya soal produk atau kategori yang ada di daftar ini ya:\n\nProduk: ${productList}\n\nKategori: ${categoryList}`;
+            return NextResponse.json({ dataForResponse }, { status: 200 });
         }
 
         // ---- LOGIKA BARU DI SINI ----
