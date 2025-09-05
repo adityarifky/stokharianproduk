@@ -40,13 +40,13 @@ const authenticateRequest = (req: NextRequest) => {
  * @swagger
  * /api/stock:
  *   get:
- *     summary: Retrieve a list of all products and their stock.
- *     description: Fetches all products from the Firestore database. Requires API Key authentication.
+ *     summary: Retrieve a combined list of all product names.
+ *     description: Fetches all products from Firestore and returns a single object containing a comma-separated string of product names.
  *     security:
  *       - BearerAuth: []
  *     responses:
  *       200:
- *         description: A list of products.
+ *         description: An object containing the productList string.
  *       401:
  *         description: Unauthorized. API Key is missing or invalid.
  *       500:
@@ -65,17 +65,16 @@ export async function GET(req: NextRequest) {
         const productSnapshot = await productsCollection.get();
         
         if (productSnapshot.empty) {
-            return NextResponse.json([], { status: 200 });
+            return NextResponse.json({ productList: "" }, { status: 200 });
         }
 
-        const productList = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Product[];
-        const totalCount = productList.length;
-        console.log(`Successfully fetched ${totalCount} products.`);
+        const productList = productSnapshot.docs.map(doc => doc.data().name) as string[];
+        const productListString = productList.join(', ');
         
-        return NextResponse.json(productList, { 
-            status: 200,
-            headers: { 'X-Total-Count': totalCount.toString() }
-        });
+        console.log(`Successfully fetched and combined ${productList.length} products.`);
+        
+        // Return a single object instead of an array
+        return NextResponse.json({ productList: productListString }, { status: 200 });
 
     } catch (error: any) {
         console.error("Error in GET /api/stock:", error);
