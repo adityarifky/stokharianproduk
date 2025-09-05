@@ -17,7 +17,6 @@ const authenticateRequest = (req: NextRequest) => {
         return false;
     }
     
-    // Memeriksa format "Bearer <token>"
     const parts = authHeader.split(' ');
     if (parts.length !== 2 || parts[0].toLowerCase() !== 'bearer') {
         console.log("Authentication failed: Malformed Authorization header.");
@@ -34,18 +33,32 @@ const authenticateRequest = (req: NextRequest) => {
     }
 }
 
-
 /**
  * @swagger
  * /api/stock:
  *   get:
- *     summary: Retrieve a list of all products.
- *     description: Fetches all products from Firestore and returns an array of product objects.
+ *     summary: Retrieve a list of all products OR a specific product/category.
+ *     description: |
+ *       - If no query parameters are provided, it fetches all products.
+ *       - If 'intent' and 'entity' query parameters are provided, it processes the request
+ *         and returns the stock data relevant to that intent and entity.
  *     security:
  *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: intent
+ *         schema:
+ *           type: string
+ *           enum: [product_stock, category_stock]
+ *         description: The user's intent (e.g., asking for a product or category).
+ *       - in: query
+ *         name: entity
+ *         schema:
+ *           type: string
+ *         description: The specific product or category name.
  *     responses:
  *       200:
- *         description: An array of product objects.
+ *         description: An array of product objects or a processed data object.
  *       401:
  *         description: Unauthorized. API Key is missing or invalid.
  *       500:
@@ -61,18 +74,47 @@ export async function GET(req: NextRequest) {
           throw new Error("Firestore Admin is not initialized.");
         }
         const productsCollection = adminDb.collection("products");
-        const productSnapshot = await productsCollection.get();
+        const productSnapshot = await productSnapshot.get();
         
         if (productSnapshot.empty) {
-            return NextResponse.json([], { status: 200 }); // Return empty array
+            return NextResponse.json({ dataForResponse: "Info: Stok lagi kosong semua nih, bro." }, { status: 200 });
         }
 
-        const productList = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const allProducts = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        const { searchParams } = new URL(req.url);
+        const intent = searchParams.get('intent');
+        const entity = searchParams.get('entity');
+
+        // Jika tidak ada intent & entity, kembalikan semua produk (untuk debug atau penggunaan lain)
+        if (!intent || !entity) {
+            return NextResponse.json(allProducts, { status: 200 });
+        }
+
+        // ---- LOGIKA BARU DI SINI ----
+        let dataForResponse = `Info: Aku kurang ngerti maksudmu, bro. Coba tanya soal stok produk atau kategori, ya.`;
+        const lowerCaseEntity = entity.toLowerCase();
+
+        if (intent === 'category_stock') {
+            const productsInCategory = allProducts.filter(p => p.category && p.category.toLowerCase() === lowerCaseEntity);
+
+            if (productsInCategory.length > 0) {
+                const stockDetails = productsInCategory.map(item => `- ${item.name} sisa *${item.stock}*`).join('\n');
+                dataForResponse = `Ini data stok untuk kategori *${entity}*:\n${stockDetails}`;
+            } else {
+                dataForResponse = `Info: Stok untuk kategori *${entity}* lagi kosong semua, bro.`;
+            }
+        } else if (intent === 'product_stock') {
+            const foundProduct = allProducts.find(p => p.name && p.name.toLowerCase() === lowerCaseEntity);
+
+            if (foundProduct) {
+                dataForResponse = `Info: Stok *${foundProduct.name}* sisa *${foundProduct.stock}*.`;
+            } else {
+                dataForResponse = `Info: Produk *${entity}* gak ketemu, bro. Coba cek lagi namanya.`;
+            }
+        }
         
-        console.log(`Successfully fetched ${productList.length} products.`);
-        
-        // Return a proper array of objects
-        return NextResponse.json(productList, { status: 200 });
+        return NextResponse.json({ dataForResponse }, { status: 200 });
 
     } catch (error: any) {
         console.error("Error in GET /api/stock:", error);
