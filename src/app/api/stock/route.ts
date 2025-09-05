@@ -1,8 +1,8 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { adminDb } from "@/lib/firebase/server"; // Menggunakan koneksi admin
-import type { Product } from "@/lib/types";
-import { createResponseMessage, type CreateResponseInput } from "@/ai/flows/create-response-flow";
+import { createResponseMessage } from "@/ai/flows/create-response-flow";
+import { CreateResponseInputSchema, type CreateResponseInput } from "@/lib/ai-types";
 
 // Fungsi otentikasi yang lebih sederhana dan kuat
 const authenticateRequest = (req: NextRequest) => {
@@ -114,9 +114,14 @@ export async function PATCH(req: NextRequest) {
     }
 
     try {
-        const body: CreateResponseInput = await req.json();
-        // Memanggil flow AI perangkai kata secara langsung dari dalam server
-        const aiResponse = await createResponseMessage(body);
+        const body = await req.json();
+        const parsedBody = CreateResponseInputSchema.safeParse(body);
+
+        if (!parsedBody.success) {
+          return NextResponse.json({ message: 'Bad Request: Invalid payload.', errors: parsedBody.error.flatten() }, { status: 400 });
+        }
+
+        const aiResponse = await createResponseMessage(parsedBody.data);
         return NextResponse.json(aiResponse, { status: 200 });
 
     } catch (error: any) {
@@ -202,4 +207,3 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ message: `Internal Server Error: ${errorMessage}` }, { status: 500 });
     }
 }
-

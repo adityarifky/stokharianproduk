@@ -9,23 +9,24 @@ import admin from 'firebase-admin';
 if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_PRIVATE_KEY || !process.env.FIREBASE_CLIENT_EMAIL) {
   console.warn("Peringatan: Variabel lingkungan Firebase Admin (PROJECT_ID, PRIVATE_KEY, CLIENT_EMAIL) tidak lengkap. Inisialisasi dilewati.");
 } else {
-  const serviceAccount: admin.ServiceAccount = {
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    // Ganti escaped newlines dengan newline character asli.
-    privateKey: (process.env.FIREBASE_PRIVATE_KEY).replace(/\\n/g, '\n'),
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-  };
+  try {
+    const serviceAccount: admin.ServiceAccount = {
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      // Ganti escaped newlines dengan newline character asli.
+      privateKey: (process.env.FIREBASE_PRIVATE_KEY).replace(/\\n/g, '\n'),
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    };
 
-  // Hanya inisialisasi jika belum ada aplikasi yang berjalan.
-  if (admin.apps.length === 0) {
-    try {
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-      });
-      console.log("Firebase Admin SDK initialized successfully.");
-    } catch (error: any) {
-      console.error("Firebase Admin initialization error:", error.message);
+    // Hanya inisialisasi jika belum ada aplikasi yang berjalan.
+    if (admin.apps.length === 0) {
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount),
+        });
+        console.log("Firebase Admin SDK initialized successfully.");
     }
+  } catch (error: any) {
+    // Log error jika terjadi masalah saat parsing atau inisialisasi
+    console.error("Firebase Admin initialization error:", error.message);
   }
 }
 
