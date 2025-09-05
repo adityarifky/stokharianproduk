@@ -37,28 +37,28 @@ const authenticateRequest = (req: NextRequest) => {
  * @swagger
  * /api/stock:
  *   get:
- *     summary: Retrieve a list of all products OR a specific product/category.
- *     description: |
- *       - If no query parameters are provided, it fetches all products.
- *       - If 'intent' and 'entity' query parameters are provided, it processes the request
- *         and returns the stock data relevant to that intent and entity.
+ *     summary: Retrieve a list of all products.
+ *     description: Fetches all products from the Firestore database.
  *     security:
  *       - BearerAuth: []
- *     parameters:
- *       - in: query
- *         name: intent
- *         schema:
- *           type: string
- *           enum: [product_stock, category_stock]
- *         description: The user's intent (e.g., asking for a product or category).
- *       - in: query
- *         name: entity
- *         schema:
- *           type: string
- *         description: The specific product or category name.
  *     responses:
  *       200:
- *         description: An array of product objects or a processed data object.
+ *         description: An array of product objects.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   name:
+ *                     type: string
+ *                   stock:
+ *                     type: number
+ *                   category:
+ *                     type: string
  *       401:
  *         description: Unauthorized. API Key is missing or invalid.
  *       500:
@@ -77,47 +77,12 @@ export async function GET(req: NextRequest) {
         const productSnapshot = await productsCollection.get();
         
         if (productSnapshot.empty) {
-            return NextResponse.json({ dataForResponse: "Info: Stok lagi kosong semua nih, bro." }, { status: 200 });
+            return NextResponse.json([], { status: 200 }); // Return empty array if no products
         }
 
         const allProducts = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        const { searchParams } = new URL(req.url);
-        const intent = searchParams.get('intent');
-        const entity = searchParams.get('entity');
-
-        // Jika tidak ada intent & entity, kembalikan semua produk (untuk debug atau penggunaan lain)
-        if (!intent || !entity || intent === 'unknown') {
-            const productList = allProducts.map(p => p.name).join(', ');
-            const categoryList = [...new Set(allProducts.map(p => p.category))].join(', ');
-            const dataForResponse = `Aku kurang ngerti maksudmu, bro. Coba tanya soal produk atau kategori yang ada di daftar ini ya:\n\nProduk: ${productList}\n\nKategori: ${categoryList}`;
-            return NextResponse.json({ dataForResponse }, { status: 200 });
-        }
-
-        // ---- LOGIKA BARU DI SINI ----
-        let dataForResponse = `Info: Aku kurang ngerti maksudmu, bro. Coba tanya soal stok produk atau kategori, ya.`;
-        const lowerCaseEntity = entity.toLowerCase();
-
-        if (intent === 'category_stock') {
-            const productsInCategory = allProducts.filter(p => p.category && p.category.toLowerCase() === lowerCaseEntity);
-
-            if (productsInCategory.length > 0) {
-                const stockDetails = productsInCategory.map(item => `- ${item.name} sisa *${item.stock}*`).join('\n');
-                dataForResponse = `Ini data stok untuk kategori *${entity}*:\n${stockDetails}`;
-            } else {
-                dataForResponse = `Info: Stok untuk kategori *${entity}* lagi kosong semua, bro.`;
-            }
-        } else if (intent === 'product_stock') {
-            const foundProduct = allProducts.find(p => p.name && p.name.toLowerCase() === lowerCaseEntity);
-
-            if (foundProduct) {
-                dataForResponse = `Info: Stok *${foundProduct.name}* sisa *${foundProduct.stock}*.`;
-            } else {
-                dataForResponse = `Info: Produk *${entity}* gak ketemu, bro. Coba cek lagi namanya.`;
-            }
-        }
         
-        return NextResponse.json({ dataForResponse }, { status: 200 });
+        return NextResponse.json(allProducts, { status: 200 });
 
     } catch (error: any) {
         console.error("Error in GET /api/stock:", error);
@@ -133,7 +98,7 @@ export async function GET(req: NextRequest) {
  *     summary: Update stock for one or more products.
  *     description: Updates the stock count for multiple products in a single atomic transaction.
  *     security:
- *       - BearerAuth: []
+       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
