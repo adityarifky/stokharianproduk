@@ -1,6 +1,9 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { adminDb } from "@/lib/firebase/server"; // Menggunakan koneksi admin
+import { createResponseMessage } from "@/ai/flows/create-response-flow";
+import type { CreateResponseInput } from "@/lib/ai-types";
+
 
 // Fungsi otentikasi yang lebih sederhana dan kuat
 const authenticateRequest = (req: NextRequest) => {
@@ -39,13 +42,13 @@ const authenticateRequest = (req: NextRequest) => {
  * @swagger
  * /api/stock:
  *   get:
- *     summary: Retrieve a combined list of all product names.
- *     description: Fetches all products from Firestore and returns a single object containing a comma-separated string of product names.
+ *     summary: Retrieve a list of all products.
+ *     description: Fetches all products from Firestore and returns an array of product objects.
  *     security:
  *       - BearerAuth: []
  *     responses:
  *       200:
- *         description: An object containing the productList string.
+ *         description: An array of product objects.
  *       401:
  *         description: Unauthorized. API Key is missing or invalid.
  *       500:
@@ -64,16 +67,15 @@ export async function GET(req: NextRequest) {
         const productSnapshot = await productsCollection.get();
         
         if (productSnapshot.empty) {
-            return NextResponse.json({ productList: "" }, { status: 200 });
+            return NextResponse.json([], { status: 200 }); // Return empty array
         }
 
-        const productList = productSnapshot.docs.map(doc => doc.data().name) as string[];
-        const productListString = productList.join(', ');
+        const productList = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         
-        console.log(`Successfully fetched and combined ${productList.length} products.`);
+        console.log(`Successfully fetched ${productList.length} products.`);
         
-        // Return a single object instead of an array
-        return NextResponse.json({ productList: productListString }, { status: 200 });
+        // Return a proper array of objects
+        return NextResponse.json(productList, { status: 200 });
 
     } catch (error: any) {
         console.error("Error in GET /api/stock:", error);
@@ -156,5 +158,54 @@ export async function POST(req: NextRequest) {
         console.error("Firestore Admin SDK Error:", error);
         const errorMessage = `Failed to update stock in Firestore. Code: ${error.code}. Message: ${error.message}`;
         return NextResponse.json({ message: `Internal Server Error: ${errorMessage}` }, { status: 500 });
+    }
+}
+
+
+/**
+ * @swagger
+ * /api/stock:
+ *   patch:
+ *     summary: Generate a response message based on stock data.
+ *     description: Receives stock information and uses an AI flow to generate a human-readable response.
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateResponseInput'
+ *     responses:
+ *       200:
+ *         description: A generated response message.
+ *       400:
+ *         description: Bad Request.
+ *       401:
+ *         description: Unauthorized.
+ *       500:
+ *         description: Internal Server Error.
+ */
+export async function PATCH(req: NextRequest) {
+    // Otentikasi opsional untuk metode PATCH, bisa diaktifkan jika perlu.
+    // if (!authenticateRequest(req)) {
+    //     return NextResponse.json({ message: 'Unauthorized: Invalid or missing API Key.' }, { status: 401 });
+    // }
+    
+    try {
+        const body = await req.json() as CreateResponseInput;
+
+        // Validasi sederhana pada body
+        if (!body.type || !body.entityName) {
+             return NextResponse.json({ message: `Bad Request: 'type' and 'entityName' are required.` }, { status: 400 });
+        }
+
+        const responseMessage = await createResponseMessage(body);
+
+        return NextResponse.json({ response: responseMessage }, { status: 200 });
+
+    } catch (error: any) {
+        console.error("Error in PATCH /api/stock:", error);
+        return NextResponse.json({ message: `Internal Server Error: ${error.message}` }, { status: 500 });
     }
 }
