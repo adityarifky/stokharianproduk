@@ -5,6 +5,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { adminDb } from "@/lib/firebase/server";
 import type { Product } from "@/lib/types";
 
+// --- PENTING: Menonaktifkan Caching di Vercel ---
+// Baris ini memberitahu Vercel untuk tidak menyimpan cache dari respons API ini.
+// Ini memastikan data yang dikirim selalu yang paling baru (real-time) dari Firestore.
+export const revalidate = 0;
+
 const authenticateRequest = (req: NextRequest) => {
     const serverApiKey = process.env.N8N_API_KEY;
     if (!serverApiKey) {
@@ -48,8 +53,6 @@ export async function GET(req: NextRequest) {
             );
         }
 
-        // --- Filter berdasarkan Kategori ---
-        // Jika parameter kategori ada, kita filter hasilnya di sini.
         if (categoryQuery) {
             allProducts = allProducts.filter(p => 
                 p.category.toLowerCase() === categoryQuery.toLowerCase()
