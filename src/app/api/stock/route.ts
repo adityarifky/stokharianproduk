@@ -1,7 +1,9 @@
+
 'use server';
 
 import { NextResponse, type NextRequest } from "next/server";
 import { adminDb } from "@/lib/firebase/server";
+import type { Product } from "@/lib/types";
 
 const authenticateRequest = (req: NextRequest) => {
     const serverApiKey = process.env.N8N_API_KEY;
@@ -38,7 +40,7 @@ export async function GET(req: NextRequest) {
             return NextResponse.json([], { status: 200 });
         }
 
-        let allProducts = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        let allProducts: Product[] = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
 
         if (nameQuery) {
             allProducts = allProducts.filter(p => 
@@ -46,6 +48,8 @@ export async function GET(req: NextRequest) {
             );
         }
 
+        // --- Filter berdasarkan Kategori ---
+        // Jika parameter kategori ada, kita filter hasilnya di sini.
         if (categoryQuery) {
             allProducts = allProducts.filter(p => 
                 p.category.toLowerCase() === categoryQuery.toLowerCase()
