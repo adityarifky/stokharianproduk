@@ -4,6 +4,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { adminDb } from "@/lib/firebase/server";
 import { Timestamp } from "firebase-admin/firestore";
+import { format, isToday, isYesterday } from 'date-fns';
+import { id } from 'date-fns/locale';
+
 
 const authenticateRequest = (req: NextRequest) => {
     const serverApiKey = process.env.N8N_API_KEY;
@@ -17,6 +20,17 @@ const authenticateRequest = (req: NextRequest) => {
     if (parts.length !== 2 || parts[0].toLowerCase() !== 'bearer') return false;
     return parts[1] === serverApiKey;
 }
+
+const formatReadableTime = (date: Date): string => {
+    if (isToday(date)) {
+        return `hari ini jam ${format(date, 'HH:mm')}`;
+    }
+    if (isYesterday(date)) {
+        return `kemarin jam ${format(date, 'HH:mm')}`;
+    }
+    return format(date, "d MMM yyyy 'jam' HH:mm", { locale: id });
+}
+
 
 export async function GET(req: NextRequest) {
     if (!authenticateRequest(req)) {
@@ -42,10 +56,12 @@ export async function GET(req: NextRequest) {
         
         const stockAdditions = stockSnapshot.docs.map(doc => {
             const data = doc.data();
+            const date = data.timestamp.toDate();
             return {
                 productName: data.product.name,
                 quantityAdded: data.quantityAdded,
-                timestamp: data.timestamp.toDate().toISOString(),
+                pic: data.session?.name || 'Sistem', // Ambil nama PIC, default ke 'Sistem'
+                readableTime: formatReadableTime(date) // Waktu yang sudah diformat rapi
             };
         });
         const totalStockIn = stockAdditions.reduce((sum, item) => sum + item.quantityAdded, 0);
@@ -58,7 +74,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({
             totalStockIn,
             totalStockOut,
-            stockAdditions, // Now we include the detailed list
+            stockAdditions, // Sekarang berisi data yang sudah lengkap dan rapi
             timeframeHours: hours
         }, { status: 200 });
 
