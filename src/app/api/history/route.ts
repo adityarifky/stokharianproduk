@@ -1,3 +1,4 @@
+
 'use server';
 
 import { NextResponse, type NextRequest } from "next/server";
@@ -33,10 +34,21 @@ export async function GET(req: NextRequest) {
         const sinceDate = new Date(Date.now() - hours * 60 * 60 * 1000);
         const sinceTimestamp = Timestamp.fromDate(sinceDate);
 
-        // Get total stock additions
-        const stockQuery = adminDb.collection("stock_history").where("timestamp", ">=", sinceTimestamp);
+        // Get stock additions with details
+        const stockQuery = adminDb.collection("stock_history")
+            .where("timestamp", ">=", sinceTimestamp)
+            .orderBy("timestamp", "desc");
         const stockSnapshot = await stockQuery.get();
-        const totalStockIn = stockSnapshot.docs.reduce((sum, doc) => sum + (doc.data().quantityAdded || 0), 0);
+        
+        const stockAdditions = stockSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                productName: data.product.name,
+                quantityAdded: data.quantityAdded,
+                timestamp: data.timestamp.toDate().toISOString(),
+            };
+        });
+        const totalStockIn = stockAdditions.reduce((sum, item) => sum + item.quantityAdded, 0);
 
         // Get total sales
         const salesQuery = adminDb.collection("sales_history").where("timestamp", ">=", sinceTimestamp);
@@ -46,6 +58,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({
             totalStockIn,
             totalStockOut,
+            stockAdditions, // Now we include the detailed list
             timeframeHours: hours
         }, { status: 200 });
 
