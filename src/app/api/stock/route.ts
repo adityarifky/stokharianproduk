@@ -40,7 +40,12 @@ export async function GET(req: NextRequest) {
         const productSnapshot = await productsQuery.get();
         
         if (productSnapshot.empty) {
-            return NextResponse.json([], { status: 200 });
+            return NextResponse.json([], { 
+                status: 200,
+                headers: {
+                    'Cache-Control': 'no-store, max-age=0',
+                },
+            });
         }
 
         let allProducts: Product[] = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
@@ -57,7 +62,12 @@ export async function GET(req: NextRequest) {
             );
         }
         
-        return NextResponse.json(allProducts, { status: 200 });
+        return NextResponse.json(allProducts, { 
+            status: 200,
+            headers: {
+                'Cache-Control': 'no-store, max-age=0',
+            },
+        });
 
     } catch (error: any) {
         console.error("Error in GET /api/stock:", error);
