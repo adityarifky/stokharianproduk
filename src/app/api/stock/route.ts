@@ -25,7 +25,6 @@ const authenticateRequest = (req: NextRequest) => {
 
     const submittedToken = parts[1];
     if (submittedToken === serverApiKey) {
-      console.log("Authentication successful.");
       return true;
     } else {
       console.log("Authentication failed: Invalid token.");
@@ -83,11 +82,12 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ message: 'Unauthorized: Invalid or missing API Key.' }, { status: 401 });
     }
 
+    if (!adminDb) {
+      console.error("Firestore Admin is not initialized. Check server environment variables.");
+      return NextResponse.json({ message: 'Internal Server Error: Firebase configuration error.' }, { status: 500 });
+    }
+
     try {
-        if (!adminDb) {
-          throw new Error("Firestore Admin is not initialized.");
-        }
-        
         const { searchParams } = new URL(req.url);
         const nameQuery = searchParams.get('name');
         const categoryQuery = searchParams.get('category');
@@ -95,8 +95,7 @@ export async function GET(req: NextRequest) {
         let productsQuery = adminDb.collection("products");
 
         // The logic for searching is complex with Firestore's limitations.
-        // For a small number of products (< ~50), fetching all and filtering in-memory is more flexible and often fast enough.
-        // This avoids needing complex indexes for case-insensitive search.
+        // For a small number of products (< ~200), fetching all and filtering in-memory is more flexible.
         const productSnapshot = await productsQuery.get();
         
         if (productSnapshot.empty) {
