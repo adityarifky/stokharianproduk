@@ -1,82 +1,21 @@
+'use server';
 
 import { NextResponse, type NextRequest } from "next/server";
-import { adminDb } from "@/lib/firebase/server"; // Menggunakan koneksi admin
+import { adminDb } from "@/lib/firebase/server";
 
-// Fungsi otentikasi yang lebih sederhana dan kuat
 const authenticateRequest = (req: NextRequest) => {
     const serverApiKey = process.env.N8N_API_KEY;
-
     if (!serverApiKey) {
-        console.error("CRITICAL: N8N_API_KEY environment variable is not set on the server.");
+        console.error("Authentication failed: N8N_API_KEY environment variable is not set.");
         return false;
     }
-
     const authHeader = req.headers.get('authorization');
-    if (!authHeader) {
-        console.log("Authentication failed: Missing Authorization header.");
-        return false;
-    }
-    
+    if (!authHeader) return false;
     const parts = authHeader.split(' ');
-    if (parts.length !== 2 || parts[0].toLowerCase() !== 'bearer') {
-        console.log("Authentication failed: Malformed Authorization header.");
-        return false;
-    }
-
-    const submittedToken = parts[1];
-    if (submittedToken === serverApiKey) {
-      return true;
-    } else {
-      console.log("Authentication failed: Invalid token.");
-      return false;
-    }
+    if (parts.length !== 2 || parts[0].toLowerCase() !== 'bearer') return false;
+    return parts[1] === serverApiKey;
 }
 
-/**
- * @swagger
- * /api/stock:
- *   get:
- *     summary: Retrieve a list of all products or search by name/category.
- *     description: |
- *       Fetches products from Firestore. 
- *       - If no query parameters are provided, it returns all products.
- *       - If `name` or `category` query parameter is provided, it searches for matching products.
- *     parameters:
- *       - in: query
- *         name: name
- *         schema:
- *           type: string
- *         description: The name of the product to search for (case-insensitive).
- *       - in: query
- *         name: category
- *         schema:
- *           type: string
- *         description: The category to filter products by (case-insensitive).
- *     security:
- *       - BearerAuth: []
- *     responses:
- *       200:
- *         description: An array of product objects.
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: string
- *                   name:
- *                     type: string
- *                   stock:
- *                     type: number
- *                   category:
- *                     type: string
- *       401:
- *         description: Unauthorized. API Key is missing or invalid.
- *       500:
- *         description: Internal Server Error.
- */
 export async function GET(req: NextRequest) {
     if (!authenticateRequest(req)) {
         return NextResponse.json({ message: 'Unauthorized: Invalid or missing API Key.' }, { status: 401 });
@@ -93,9 +32,6 @@ export async function GET(req: NextRequest) {
         const categoryQuery = searchParams.get('category');
         
         let productsQuery = adminDb.collection("products");
-
-        // The logic for searching is complex with Firestore's limitations.
-        // For a small number of products (< ~200), fetching all and filtering in-memory is more flexible.
         const productSnapshot = await productsQuery.get();
         
         if (productSnapshot.empty) {
@@ -124,41 +60,6 @@ export async function GET(req: NextRequest) {
     }
 }
 
-
-/**
- * @swagger
- * /api/stock:
- *   post:
- *     summary: Update stock for one or more products.
- *     description: Updates the stock count for multiple products in a single atomic transaction.
- *     security:
-       - BearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               updates:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                     stock:
- *                       type: integer
- *     responses:
- *       200:
- *         description: Stock updated successfully.
- *       400:
- *         description: Bad Request.
- *       401:
- *         description: Unauthorized.
- *       500:
- *         description: Internal Server Error.
- */
 interface StockUpdate {
     id: string;
     stock: number;
@@ -170,7 +71,7 @@ export async function POST(req: NextRequest) {
     }
     
     if (!adminDb) {
-      console.error("Firestore Admin is not initialized. Check server environment variables.");
+      console.error("Firestore Admin is not initialized.");
       return NextResponse.json({ message: 'Internal Server Error: Firebase configuration error.' }, { status: 500 });
     }
 
@@ -196,8 +97,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ message: "Stock updated successfully." }, { status: 200 });
 
     } catch (error: any) {
-        console.error("Firestore Admin SDK Error:", error);
-        const errorMessage = `Failed to update stock in Firestore. Code: ${error.code}. Message: ${error.message}`;
-        return NextResponse.json({ message: `Internal Server Error: ${errorMessage}` }, { status: 500 });
+        console.error("Error in POST /api/stock:", error);
+        return NextResponse.json({ message: `Internal Server Error: ${error.message}` }, { status: 500 });
     }
 }
