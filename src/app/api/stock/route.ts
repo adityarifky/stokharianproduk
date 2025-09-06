@@ -37,8 +37,22 @@ const authenticateRequest = (req: NextRequest) => {
  * @swagger
  * /api/stock:
  *   get:
- *     summary: Retrieve a list of all products.
- *     description: Fetches all products from the Firestore database.
+ *     summary: Retrieve a list of all products or search by name/category.
+ *     description: |
+ *       Fetches products from Firestore. 
+ *       - If no query parameters are provided, it returns all products.
+ *       - If `name` or `category` query parameter is provided, it searches for matching products.
+ *     parameters:
+ *       - in: query
+ *         name: name
+ *         schema:
+ *           type: string
+ *         description: The name of the product to search for (case-insensitive).
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *         description: The category to filter products by (case-insensitive).
  *     security:
  *       - BearerAuth: []
  *     responses:
@@ -73,14 +87,35 @@ export async function GET(req: NextRequest) {
         if (!adminDb) {
           throw new Error("Firestore Admin is not initialized.");
         }
-        const productsCollection = adminDb.collection("products");
-        const productSnapshot = await productsCollection.get();
+        
+        const { searchParams } = new URL(req.url);
+        const nameQuery = searchParams.get('name');
+        const categoryQuery = searchParams.get('category');
+        
+        let productsQuery = adminDb.collection("products");
+
+        // The logic for searching is complex with Firestore's limitations.
+        // For a small number of products (< ~50), fetching all and filtering in-memory is more flexible and often fast enough.
+        // This avoids needing complex indexes for case-insensitive search.
+        const productSnapshot = await productsQuery.get();
         
         if (productSnapshot.empty) {
-            return NextResponse.json([], { status: 200 }); // Return empty array if no products
+            return NextResponse.json([], { status: 200 });
         }
 
-        const allProducts = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        let allProducts = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        if (nameQuery) {
+            allProducts = allProducts.filter(p => 
+                p.name.toLowerCase().includes(nameQuery.toLowerCase())
+            );
+        }
+
+        if (categoryQuery) {
+            allProducts = allProducts.filter(p => 
+                p.category.toLowerCase() === categoryQuery.toLowerCase()
+            );
+        }
         
         return NextResponse.json(allProducts, { status: 200 });
 
