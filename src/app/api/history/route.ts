@@ -22,6 +22,7 @@ const authenticateRequest = (req: NextRequest) => {
 }
 
 const formatReadableTime = (date: Date): string => {
+    // Diperbarui: Menggunakan 'HH:mm' untuk format jam yang akurat
     if (isToday(date)) {
         return `hari ini jam ${format(date, 'HH:mm')}`;
     }
