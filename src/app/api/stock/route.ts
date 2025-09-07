@@ -37,28 +37,18 @@ export async function GET(req: NextRequest) {
         const categoryQuery = searchParams.get('category');
         
         let productsQuery = adminDb.collection("products");
-        const productSnapshot = await productsQuery.get();
-        
-        if (productSnapshot.empty) {
-            return NextResponse.json([], { 
-                status: 200,
-                headers: {
-                    'Cache-Control': 'no-store, max-age=0',
-                },
-            });
+
+        if (categoryQuery) {
+            productsQuery = productsQuery.where('category', '==', categoryQuery) as admin.firestore.CollectionReference;
         }
 
+        const productSnapshot = await productsQuery.get();
+        
         let allProducts: Product[] = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
 
         if (nameQuery) {
             allProducts = allProducts.filter(p => 
                 p.name.toLowerCase().includes(nameQuery.toLowerCase())
-            );
-        }
-
-        if (categoryQuery) {
-            allProducts = allProducts.filter(p => 
-                p.category.toLowerCase() === categoryQuery.toLowerCase()
             );
         }
         
