@@ -12,7 +12,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { adminDb } from '@/lib/firebase/server';
 import type { Product } from '@/lib/types';
-import type { Query } from 'firebase-admin/firestore';
+import { generate } from 'genkit/generate';
 
 const ChatInputSchema = z.object({
   history: z.string().optional().describe('The conversation history between the user and the assistant.'),
@@ -56,10 +56,12 @@ const getProductStockTool = ai.defineTool(
 
             let results: Product[] = [];
             categorySnapshot.forEach(doc => {
-                results.push(doc.data() as Product);
+                const data = doc.data() as Product;
+                // Add the document ID to the product data
+                results.push({ id: doc.id, ...data });
             });
-
-            // If we found results by category, filter them to be more precise
+            
+            // Filter again for more precise category matching
             if (results.length > 0) {
                  const categoryFiltered = results.filter(p => p.category.toLowerCase().includes(lowerCaseQuery));
                  if(categoryFiltered.length > 0) {
@@ -110,15 +112,6 @@ Do not repeat information you have already given unless asked.
 If you don't know the answer, just say "Waduh, aku kurang tau bro, coba tanya yang lain ya."
 `;
 
-const prompt = ai.definePrompt({
-  name: 'chatPrompt',
-  input: { schema: ChatInputSchema },
-  output: { schema: ChatOutputSchema },
-  system: systemPrompt,
-  tools: [getProductStockTool],
-  prompt: `{{#if history}}HISTORY:\n{{{history}}}{{/if}}\n\nUSER MESSAGE:\n{{{message}}}`,
-});
-
 const chatFlow = ai.defineFlow(
   {
     name: 'chatFlow',
@@ -126,21 +119,21 @@ const chatFlow = ai.defineFlow(
     outputSchema: ChatOutputSchema,
   },
   async (input) => {
-    const llmResponse = await prompt.generate({
-        input: input,
+    
+    const llmResponse = await generate({
+      model: 'googleai/gemini-1.5-flash-latest',
+      tools: [getProductStockTool],
+      prompt: `${systemPrompt}\n\n{{#if history}}HISTORY:\n{{{history}}}{{/if}}\n\nUSER MESSAGE:\n{{{message}}}`,
+      input: input,
+      output: {
+        format: 'text'
+      }
     });
 
-    const choice = llmResponse.choices[0];
-    const reply = choice.message.content.map(part => part.text || '').join('');
-
+    const reply = llmResponse.text();
+    
     if (reply) {
       return { reply };
-    }
-    
-    // If there is a tool call, handle it (though the model should handle it internally and generate text)
-    // This part is more for complex agentic flows, but we can assume the model will generate text after a tool call.
-    if(choice.message.toolRequest) {
-      return { reply: "Sebentar bro, aku cek dulu ya..." };
     }
 
     return { reply: "Waduh, aku bingung bro. Coba tanya lagi dengan cara lain ya." };
