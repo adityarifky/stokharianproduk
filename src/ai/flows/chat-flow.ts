@@ -44,25 +44,24 @@ const getProductStockTool = ai.defineTool(
             return [];
         }
         try {
-            let query: admin.firestore.Query<admin.firestore.DocumentData> = adminDb.collection("products");
-            if (input.productName) {
-                // Firestore doesn't support case-insensitive or "contains" queries directly in a simple way.
-                // We'll fetch all and filter, which is acceptable for a small product list.
-                // For larger datasets, a search service like Algolia or Typesense would be better.
-                const snapshot = await query.get();
-                const allProducts = snapshot.docs.map(doc => doc.data() as Product);
-                const filteredProducts = allProducts.filter(p => 
-                    p.name.toLowerCase().includes(input.productName!.toLowerCase())
-                );
-                return filteredProducts.map(({ name, stock, category }) => ({ name, stock, category }));
-            }
+            const query = adminDb.collection("products");
             
             const snapshot = await query.get();
             if (snapshot.empty) {
                 return [];
             }
-            return snapshot.docs.map(doc => {
-                const data = doc.data() as Product;
+            
+            let allProducts = snapshot.docs.map(doc => doc.data() as Product);
+
+            if (input.productName) {
+                const lowerCaseProductName = input.productName.toLowerCase();
+                const filteredProducts = allProducts.filter(p => 
+                    p.name.toLowerCase().includes(lowerCaseProductName)
+                );
+                return filteredProducts.map(({ name, stock, category }) => ({ name, stock, category }));
+            }
+            
+            return allProducts.map(data => {
                 return { name: data.name, stock: data.stock, category: data.category };
             });
         } catch (error) {
