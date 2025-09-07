@@ -1,7 +1,7 @@
 
 import { conversationalChat } from "@/ai/flows/chat-flow";
 import { NextRequest, NextResponse } from "next/server";
-import { Message } from "genkit/generate";
+import { Message } from "genkit/ai";
 
 export const dynamic = 'force-dynamic';
 
