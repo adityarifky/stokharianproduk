@@ -55,7 +55,6 @@ const chatFlow = ai.defineFlow(
       {
         conversationId: input.sessionId,
         prompt: chatPrompt,
-        model: ai.model,
       },
       async () => {
         // Construct the new message from the user.
