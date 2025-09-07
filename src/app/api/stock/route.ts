@@ -33,23 +33,29 @@ export async function GET(req: NextRequest) {
 
     try {
         const { searchParams } = new URL(req.url);
-        const nameQuery = searchParams.get('name');
-        const categoryQuery = searchParams.get('category');
+        const nameQuery = searchParams.get('name')?.toLowerCase();
+        const categoryQuery = searchParams.get('category')?.toLowerCase();
         
-        let productsQuery = adminDb.collection("products");
-
-        if (categoryQuery) {
-            productsQuery = productsQuery.where('category', '==', categoryQuery) as admin.firestore.CollectionReference;
-        }
-
+        const productsQuery = adminDb.collection("products");
         const productSnapshot = await productsQuery.get();
         
         let allProducts: Product[] = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
 
-        if (nameQuery) {
-            allProducts = allProducts.filter(p => 
-                p.name.toLowerCase().includes(nameQuery.toLowerCase())
-            );
+        // Terapkan filter jika ada query
+        if (nameQuery || categoryQuery) {
+            allProducts = allProducts.filter(p => {
+                const productName = p.name.toLowerCase();
+                const productCategory = p.category.toLowerCase();
+                
+                // Jika ada query nama, produk harus cocok dengan nama
+                const nameMatch = nameQuery ? productName.includes(nameQuery) : true;
+                
+                // Jika ada query kategori, produk harus cocok dengan kategori
+                const categoryMatch = categoryQuery ? productCategory.includes(categoryQuery) : true;
+
+                // Kembalikan produk jika cocok dengan kedua kondisi (jika ada)
+                return nameMatch && categoryMatch;
+            });
         }
         
         return NextResponse.json(allProducts, { 
