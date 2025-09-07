@@ -10,7 +10,7 @@
 
 import {ai} from '@/ai/genkit';
 import {generate} from 'genkit/ai';
-import {Message} from 'genkit/ai';
+import type {Message} from 'genkit/ai';
 import {
   history,
   defineConversation,
@@ -57,12 +57,6 @@ const chatFlow = ai.defineFlow(
         prompt: chatPrompt,
       },
       async () => {
-        // Construct the new message from the user.
-        const userMessage = new Message({
-          role: 'user',
-          content: [{text: input.message}],
-        });
-
         // The history is automatically retrieved by defineConversation.
         // We just need to generate the next response.
         const llmResponse = await generate({
