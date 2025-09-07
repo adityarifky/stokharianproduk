@@ -1,13 +1,12 @@
-
 import { conversationalChat } from "@/ai/flows/chat-flow";
 import { NextRequest, NextResponse } from "next/server";
-import { Message } from "genkit/ai";
+import { type MessageData } from "genkit/ai";
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    const { history } = (await req.json()) as { history: Message[] };
+    const { history } = (await req.json()) as { history: MessageData[] };
 
     if (!history || !Array.isArray(history)) {
       return NextResponse.json(

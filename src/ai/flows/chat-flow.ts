@@ -1,15 +1,14 @@
-
 'use server';
 /**
  * @fileOverview A conversational AI flow for Dreampuff stock management.
  *
- * - chatFlow - A function that handles the chat conversation.
+ * - conversationalChat - A function that handles the chat conversation.
  */
 import { ai } from '@/ai/genkit';
 import { adminDb } from '@/lib/firebase/server';
 import type { Product } from '@/lib/types';
 import { z } from 'zod';
-import { Message } from 'genkit/ai';
+import { defineFlow, type MessageData } from 'genkit/ai';
 
 // Define the tool for getting product stock.
 const getProductStockTool = ai.defineTool(
@@ -60,16 +59,17 @@ const getProductStockTool = ai.defineTool(
 );
 
 // Define the main chat flow.
-export const chatFlow = ai.defineFlow(
+const chatFlow = defineFlow(
     {
       name: 'chatFlow',
-      inputSchema: z.array(z.custom<Message>()),
+      inputSchema: z.array(z.any()), // Use z.any() for history
       outputSchema: z.string(),
     },
     async (history) => {
       const systemPrompt = `You are PuffBot, a friendly and helpful assistant for Dreampuff, a pastry shop.
 Your main task is to provide information about product stock.
 Always answer in Indonesian in a friendly, casual, and conversational tone. Make your answers feel natural, not robotic.
+Your answers should be comprehensive and conversational.
 
 Here's how you MUST behave:
 1.  **Analyze History First:** Before calling any tools, ALWAYS analyze the conversation history to understand the context. If the user's question can be answered using information ALREADY PRESENT in the history, DO NOT call the tool again. Use the existing data to answer.
@@ -80,7 +80,7 @@ Here's how you MUST behave:
 5.  **Handle Zero Stock:** If a product has 0 stock, explicitly state that it is "habis" (sold out) or "kosong".
 `;
 
-      const result = await ai.generate({
+      const { output } = await ai.generate({
         model: 'googleai/gemini-2.0-flash',
         tools: [getProductStockTool],
         prompt: {
@@ -89,11 +89,14 @@ Here's how you MUST behave:
         },
       });
 
-      return result.text;
+      if (!output) {
+        return "Maaf, terjadi kesalahan dan aku tidak bisa memberikan jawaban.";
+      }
+      return output.text;
     }
 );
 
 // Wrapper function to be called from the API route.
-export async function conversationalChat(history: Message[]) {
+export async function conversationalChat(history: MessageData[]) {
   return await chatFlow(history);
 }
