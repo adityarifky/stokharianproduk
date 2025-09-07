@@ -29,9 +29,9 @@ export type ChatOutput = z.infer<typeof ChatOutputSchema>;
 const getProductStockTool = ai.defineTool(
     {
         name: 'getProductStock',
-        description: 'Get the current stock for all products, a specific product, or a category of products.',
+        description: 'Get the current stock for a specific product or a category of products. Use this if the user asks about stock.',
         inputSchema: z.object({
-            query: z.string().optional().describe('The name of the product or category to check. If empty, get all products.'),
+            query: z.string().describe('The name of the product or category to check.'),
         }),
         outputSchema: z.array(z.object({
             name: z.string(),
@@ -40,65 +40,50 @@ const getProductStockTool = ai.defineTool(
         })),
     },
     async (input) => {
+        console.log(`[getProductStockTool] Received query: "${input.query}"`);
         if (!adminDb) {
-            console.error("Firestore Admin is not initialized.");
+            console.error("[getProductStockTool] Firestore Admin is not initialized.");
             return [];
         }
+        
         try {
-            let productsQuery: Query = adminDb.collection("products");
+            const lowerCaseQuery = input.query.toLowerCase();
+            const productsRef = adminDb.collection("products");
 
-            if (input.query) {
-                const lowerCaseQuery = input.query.toLowerCase();
-                
-                // Coba query berdasarkan kategori dulu
-                const categoryQuery = productsQuery.where('category', '>=', lowerCaseQuery).where('category', '<=', lowerCaseQuery + '\uf8ff');
-                let snapshot = await categoryQuery.get();
+            // First, try to find an exact or partial match for category
+            const categoryQuery = productsRef.where('category', '>=', lowerCaseQuery).where('category', '<=', lowerCaseQuery + '\uf8ff');
+            const categorySnapshot = await categoryQuery.get();
 
-                // Jika tidak ada hasil, coba cari berdasarkan nama
-                if (snapshot.empty) {
-                    const nameQuery = productsQuery.orderBy('name').startAt(lowerCaseQuery).endAt(lowerCaseQuery + '\uf8ff');
-                    snapshot = await nameQuery.get();
-                }
+            let results: Product[] = [];
+            categorySnapshot.forEach(doc => {
+                results.push(doc.data() as Product);
+            });
 
-                if (snapshot.empty) return [];
-
-                // Filter manual untuk kasus .includes() yang tidak didukung Firestore
-                const allProducts = snapshot.docs.map(doc => doc.data() as Product);
-                const filteredProducts = allProducts.filter(p => 
-                    p.name.toLowerCase().includes(lowerCaseQuery) ||
-                    p.category.toLowerCase().includes(lowerCaseQuery)
-                );
-                
-                return filteredProducts.map(({ name, stock, category }) => ({ name, stock, category }));
-
-            } else {
-                // Jika tidak ada query, ambil semua produk
-                const snapshot = await productsQuery.get();
-                if (snapshot.empty) return [];
-                return snapshot.docs.map(doc => {
-                    const data = doc.data() as Product;
-                    return { name: data.name, stock: data.stock, category: data.category };
-                });
-            }
-        } catch (error) {
-            console.error("Error fetching from Firestore:", error);
-            // Coba fallback dengan mengambil semua data jika query gagal
-             try {
-                const snapshot = await adminDb.collection("products").get();
-                if (snapshot.empty) return [];
-                let allProducts = snapshot.docs.map(doc => doc.data() as Product);
-                 if(input.query){
-                     const lowerCaseQuery = input.query.toLowerCase();
-                     allProducts = allProducts.filter(p => 
-                         p.name.toLowerCase().includes(lowerCaseQuery) ||
-                         p.category.toLowerCase().includes(lowerCaseQuery)
-                     );
+            // If we found results by category, filter them to be more precise
+            if (results.length > 0) {
+                 const categoryFiltered = results.filter(p => p.category.toLowerCase().includes(lowerCaseQuery));
+                 if(categoryFiltered.length > 0) {
+                    console.log(`[getProductStockTool] Found ${categoryFiltered.length} item(s) by category.`);
+                    return categoryFiltered.map(({ name, stock, category }) => ({ name, stock, category }));
                  }
-                 return allProducts.map(({ name, stock, category }) => ({ name, stock, category }));
-            } catch (fallbackError) {
-                 console.error("Fallback fetch from Firestore also failed:", fallbackError);
-                 return [];
             }
+            
+            // If no results by category, try searching by product name
+            const allProductsSnapshot = await productsRef.get();
+            const allProducts = allProductsSnapshot.docs.map(doc => doc.data() as Product);
+            const nameFiltered = allProducts.filter(p => p.name.toLowerCase().includes(lowerCaseQuery));
+
+            if (nameFiltered.length > 0) {
+                console.log(`[getProductStockTool] Found ${nameFiltered.length} item(s) by name.`);
+                return nameFiltered.map(({ name, stock, category }) => ({ name, stock, category }));
+            }
+            
+            console.log("[getProductStockTool] No products found matching query.");
+            return [];
+
+        } catch (error) {
+            console.error("[getProductStockTool] Error fetching from Firestore:", error);
+            return [];
         }
     }
 );
@@ -110,17 +95,17 @@ export async function chat(input: ChatInput): Promise<ChatOutput> {
 
 const systemPrompt = `You are a friendly and helpful assistant for "Dreampuff", a pastry shop.
 Your name is PuffBot. You must use casual Indonesian language ("bro", "sist", "santai aja", "gaskeun", etc.).
-Your primary function is to check daily product stock by using the provided tool.
-If the user asks about stock for a product or a category, you MUST use the getProductStock tool with the user's query to get the real-time data.
+Your primary function is to check daily product stock.
+If the user asks about stock for a product or a category, you MUST use the getProductStock tool.
 Do not invent or make up stock numbers.
-If you use the tool and it returns an empty list, it means the product or category doesn't exist or has no items. You should say something like "Waduh, produk atau kategori itu kayaknya ga ada di catatan deh bro."
-Keep your answers concise and to the point.
+If the tool returns an empty list, it means the product or category doesn't exist. You should say something like "Waduh, produk atau kategori '{query}' kayaknya ga ada di catatan deh bro."
+Keep your answers concise.
 
-If the stock is 0, say it's "habis" (sold out).
-If the stock is low (1-5), mention that it's "tinggal sedikit" (only a few left) and maybe suggest to hurry up.
+If the stock is 0, say it's "habis".
+If the stock is low (1-5), mention that it's "tinggal sedikit" and suggest to hurry up.
 When providing stock info for a category, list all product names in that category and their respective stock.
 
-Conversation History is provided below, use it to understand the context of the user's message.
+Conversation History is provided below, use it to understand the context.
 Do not repeat information you have already given unless asked.
 If you don't know the answer, just say "Waduh, aku kurang tau bro, coba tanya yang lain ya."
 `;
@@ -131,15 +116,7 @@ const prompt = ai.definePrompt({
   output: { schema: ChatOutputSchema },
   system: systemPrompt,
   tools: [getProductStockTool],
-  prompt: `{{#if history}}
-Riwayat Percakapan:
-{{{history}}}
-{{/if}}
-
-Pesan Baru Pengguna:
-{{{message}}}
-
-Balasanmu:`,
+  prompt: `{{#if history}}HISTORY:\n{{{history}}}{{/if}}\n\nUSER MESSAGE:\n{{{message}}}`,
 });
 
 const chatFlow = ai.defineFlow(
@@ -149,7 +126,23 @@ const chatFlow = ai.defineFlow(
     outputSchema: ChatOutputSchema,
   },
   async (input) => {
-    const { output } = await prompt(input);
-    return output!;
+    const llmResponse = await prompt.generate({
+        input: input,
+    });
+
+    const choice = llmResponse.choices[0];
+    const reply = choice.message.content.map(part => part.text || '').join('');
+
+    if (reply) {
+      return { reply };
+    }
+    
+    // If there is a tool call, handle it (though the model should handle it internally and generate text)
+    // This part is more for complex agentic flows, but we can assume the model will generate text after a tool call.
+    if(choice.message.toolRequest) {
+      return { reply: "Sebentar bro, aku cek dulu ya..." };
+    }
+
+    return { reply: "Waduh, aku bingung bro. Coba tanya lagi dengan cara lain ya." };
   }
 );
