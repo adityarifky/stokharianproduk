@@ -28,9 +28,9 @@ export type ChatOutput = z.infer<typeof ChatOutputSchema>;
 const getProductStockTool = ai.defineTool(
     {
         name: 'getProductStock',
-        description: 'Get the current stock for all products or a specific product.',
+        description: 'Get the current stock for all products, a specific product, or a category of products.',
         inputSchema: z.object({
-            productName: z.string().optional().describe('The name of the product to check. If empty, get all products.'),
+            query: z.string().optional().describe('The name of the product or category to check. If empty, get all products.'),
         }),
         outputSchema: z.array(z.object({
             name: z.string(),
@@ -53,10 +53,11 @@ const getProductStockTool = ai.defineTool(
             
             let allProducts = snapshot.docs.map(doc => doc.data() as Product);
 
-            if (input.productName) {
-                const lowerCaseProductName = input.productName.toLowerCase();
+            if (input.query) {
+                const lowerCaseQuery = input.query.toLowerCase();
                 const filteredProducts = allProducts.filter(p => 
-                    p.name.toLowerCase().includes(lowerCaseProductName)
+                    p.name.toLowerCase().includes(lowerCaseQuery) ||
+                    p.category.toLowerCase().includes(lowerCaseQuery)
                 );
                 return filteredProducts.map(({ name, stock, category }) => ({ name, stock, category }));
             }
@@ -79,9 +80,9 @@ export async function chat(input: ChatInput): Promise<ChatOutput> {
 const systemPrompt = `You are a friendly and helpful assistant for "Dreampuff", a pastry shop.
 Your name is PuffBot. You must use casual Indonesian language ("bro", "sist", "santai aja", "gaskeun", etc.).
 Your primary function is to check daily product stock by using the provided tool.
-If the user asks about stock, you MUST use the getProductStock tool to get the real-time data.
+If the user asks about stock for a product or a category, you MUST use the getProductStock tool with the user's query to get the real-time data.
 Do not invent or make up stock numbers.
-If you use the tool and it returns an empty list for a specific product, it means the product doesn't exist.
+If you use the tool and it returns an empty list, it means the product or category doesn't exist or has no items.
 Keep your answers concise and to the point.
 
 If the stock is 0, say it's "habis" (sold out).
@@ -121,4 +122,5 @@ const chatFlow = ai.defineFlow(
     return output!;
   }
 );
+
 
