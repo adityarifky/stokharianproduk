@@ -39,22 +39,16 @@ export async function GET(req: NextRequest) {
         const productsQuery = adminDb.collection("products");
         const productSnapshot = await productsQuery.get();
         
-        const allProducts: Product[] = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+        let allProducts: Product[] = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
 
-        let filteredProducts: Product[] = [];
+        // --- Logika Pencarian Diperbaiki ---
+        // Logika pencarian dibuat lebih spesifik untuk mencegah ambiguitas
+        let filteredProducts: Product[] = allProducts;
 
-        // --- Logika Pencarian Baru ---
-        // Jika ada query kategori, filter berdasarkan kategori yang cocok persis (case-insensitive)
         if (categoryQuery) {
             filteredProducts = allProducts.filter(p => p.category.toLowerCase() === categoryQuery);
-        }
-        // Jika ada query nama, filter berdasarkan nama yang mengandung query tersebut
-        else if (nameQuery) {
+        } else if (nameQuery) {
             filteredProducts = allProducts.filter(p => p.name.toLowerCase().includes(nameQuery));
-        }
-        // Jika tidak ada query sama sekali, kembalikan semua produk
-        else {
-            filteredProducts = allProducts;
         }
         
         return NextResponse.json(filteredProducts, { 
