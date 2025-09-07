@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A conversational chat flow for Dreampuff stock bot.
@@ -12,7 +11,6 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { adminDb } from '@/lib/firebase/server';
 import type { Product } from '@/lib/types';
-import { generate } from 'genkit/generate';
 
 const ChatInputSchema = z.object({
   history: z.string().optional().describe('The conversation history between the user and the assistant.'),
@@ -57,7 +55,6 @@ const getProductStockTool = ai.defineTool(
             let results: Product[] = [];
             categorySnapshot.forEach(doc => {
                 const data = doc.data() as Product;
-                // Add the document ID to the product data
                 results.push({ id: doc.id, ...data });
             });
             
@@ -112,6 +109,19 @@ Do not repeat information you have already given unless asked.
 If you don't know the answer, just say "Waduh, aku kurang tau bro, coba tanya yang lain ya."
 `;
 
+const chatPrompt = ai.definePrompt({
+    name: 'chatPrompt',
+    system: systemPrompt,
+    tools: [getProductStockTool],
+    input: {
+      schema: ChatInputSchema,
+    },
+    output: {
+        format: 'text'
+    }
+});
+
+
 const chatFlow = ai.defineFlow(
   {
     name: 'chatFlow',
@@ -120,10 +130,10 @@ const chatFlow = ai.defineFlow(
   },
   async (input) => {
     
-    const llmResponse = await generate({
+    const llmResponse = await ai.generate({
+      prompt: `${systemPrompt}\n\n{{#if history}}HISTORY:\n{{{history}}}{{/if}}\n\nUSER MESSAGE:\n{{{message}}}`,
       model: 'googleai/gemini-1.5-flash-latest',
       tools: [getProductStockTool],
-      prompt: `${systemPrompt}\n\n{{#if history}}HISTORY:\n{{{history}}}{{/if}}\n\nUSER MESSAGE:\n{{{message}}}`,
       input: input,
       output: {
         format: 'text'
