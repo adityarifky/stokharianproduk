@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A conversational flow that uses Genkit's built-in memory.
@@ -8,12 +9,20 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {run} from 'genkit/experimental';
-import {z} from 'zod';
+import {generate} from 'genkit/ai';
 import {
-  retrieveMostRecentMessages,
-  saveMessages,
-} from 'genkit/experimental/memory';
+  Message,
+  ToolRequestPart,
+  defineModel,
+  model,
+} from 'genkit/ai/model';
+import {
+  history,
+  retrieve,
+  session,
+  defineConversation,
+} from 'genkit/context';
+import {z} from 'zod';
 
 const ChatInputSchema = z.object({
   history: z.array(z.any()).optional(),
@@ -26,17 +35,7 @@ const ChatOutputSchema = z.string();
 export type ChatOutput = z.infer<typeof ChatOutputSchema>;
 
 // This is the main prompt for our chatbot.
-const chatPrompt = ai.definePrompt(
-  {
-    name: 'chatPrompt',
-    input: {schema: z.object({history: z.array(z.any()), message: z.string()})},
-    // Note: We are not using an output schema here so the model can respond more freely.
-    // In a production app, you would want to add a schema to ensure the model
-    // responds in the format you expect.
-    // output: {schema: ChatOutputSchema},
-
-    // This is the system prompt that guides the model's behavior.
-    system: `Anda adalah "Dreambot", sebuah AI yang super canggih, ramah, dan informatif dengan gaya bahasa santai seperti teman ngobrol sehari-hari. Anda tidak kaku dan selalu berusaha memberikan jawaban yang relevan dan berguna, baik itu soal data internal toko kue Dreampuff ataupun pengetahuan umum.
+const chatPrompt = `Anda adalah "Dreambot", sebuah AI yang super canggih, ramah, dan informatif dengan gaya bahasa santai seperti teman ngobrol sehari-hari. Anda tidak kaku dan selalu berusaha memberikan jawaban yang relevan dan berguna, baik itu soal data internal toko kue Dreampuff ataupun pengetahuan umum.
 
 # PERATURAN UTAMA
 1.  **AKURASI ADALAH SEGALANYA:** Saat menyajikan data dari sistem, Anda DILARANG KERAS mengubah, menambah, atau menginterpretasi data tersebut. Tampilkan apa adanya. Jika data kosong, katakan kosong.
@@ -47,22 +46,7 @@ const chatPrompt = ai.definePrompt(
 # CONTOH SKENARIO DENGAN MEMORI
 - Jika sebelumnya Anda memberikan daftar stok yang kosong, dan user merespons "waduh kosong semua ya", jawaban Anda harusnya nyambung, seperti: "Iya, bro, lagi pada kosong nih. Mungkin lagi proses restock. Mau aku cek lagi nanti?"
 - JANGAN menjawab: "Aduh, kenapa bro? kalau ada apa-apa, cerita aja ya." karena itu menunjukkan Anda tidak ingat percakapan sebelumnya.
-`,
-    prompt: `Berikut adalah riwayat percakapan. Lanjutkan.
-
-{{#each history}}
-  {{#if (eq role 'user')}}
-    User: {{{content.[0].text}}}
-  {{else}}
-    You: {{{content.[0].text}}}
-  {{/if}}
-{{/each}}
-
-User: {{{message}}}
-You:`,
-  },
-  run
-);
+`;
 
 // This is the flow that orchestrates the chat.
 const chatFlow = ai.defineFlow(
@@ -72,27 +56,32 @@ const chatFlow = ai.defineFlow(
     outputSchema: ChatOutputSchema,
   },
   async (input) => {
-    // Save the user's message to memory.
-    await saveMessages(input.sessionId, [
-      {role: 'user', content: [{text: input.message}]},
-    ]);
+    // Start a new conversation session with memory.
+    // This will automatically save new messages and retrieve history.
+    return defineConversation(
+      {
+        conversationId: input.sessionId,
+        prompt: chatPrompt,
+        model: ai.model,
+      },
+      async () => {
+        // Construct the new message from the user.
+        const userMessage = new Message({
+          role: 'user',
+          content: [{text: input.message}],
+        });
 
-    // Retrieve the most recent messages from memory.
-    const history = await retrieveMostRecentMessages(input.sessionId, 10);
+        // The history is automatically retrieved by defineConversation.
+        // We just need to generate the next response.
+        const llmResponse = await generate({
+          model: ai.model,
+          prompt: input.message, // Send only the new message
+          history: await history(), // The history is managed by the session
+        });
 
-    // Run the chat prompt with the history and new message.
-    const llmResponse = await chatPrompt({
-      history,
-      message: input.message,
-    });
-    const response = llmResponse.output || 'Maaf bro, lagi nge-blank nih.';
-
-    // Save the model's response to memory.
-    await saveMessages(input.sessionId, [
-      {role: 'model', content: [{text: response}]},
-    ]);
-
-    return response;
+        return llmResponse.text();
+      }
+    );
   }
 );
 
