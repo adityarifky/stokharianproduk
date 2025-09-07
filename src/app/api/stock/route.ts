@@ -33,32 +33,31 @@ export async function GET(req: NextRequest) {
 
     try {
         const { searchParams } = new URL(req.url);
-        const nameQuery = searchParams.get('name')?.toLowerCase();
-        const categoryQuery = searchParams.get('category')?.toLowerCase();
+        const nameQuery = searchParams.get('name')?.toLowerCase().trim();
+        const categoryQuery = searchParams.get('category')?.toLowerCase().trim();
         
         const productsQuery = adminDb.collection("products");
         const productSnapshot = await productsQuery.get();
         
-        let allProducts: Product[] = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+        const allProducts: Product[] = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
 
-        // Terapkan filter jika ada query
-        if (nameQuery || categoryQuery) {
-            allProducts = allProducts.filter(p => {
-                const productName = p.name.toLowerCase();
-                const productCategory = p.category.toLowerCase();
-                
-                // Jika ada query nama, produk harus cocok dengan nama
-                const nameMatch = nameQuery ? productName.includes(nameQuery) : true;
-                
-                // Jika ada query kategori, produk harus cocok dengan kategori
-                const categoryMatch = categoryQuery ? productCategory.includes(categoryQuery) : true;
+        let filteredProducts: Product[] = [];
 
-                // Kembalikan produk jika cocok dengan kedua kondisi (jika ada)
-                return nameMatch && categoryMatch;
-            });
+        // --- Logika Pencarian Baru ---
+        // Jika ada query kategori, filter berdasarkan kategori yang cocok persis (case-insensitive)
+        if (categoryQuery) {
+            filteredProducts = allProducts.filter(p => p.category.toLowerCase() === categoryQuery);
+        }
+        // Jika ada query nama, filter berdasarkan nama yang mengandung query tersebut
+        else if (nameQuery) {
+            filteredProducts = allProducts.filter(p => p.name.toLowerCase().includes(nameQuery));
+        }
+        // Jika tidak ada query sama sekali, kembalikan semua produk
+        else {
+            filteredProducts = allProducts;
         }
         
-        return NextResponse.json(allProducts, { 
+        return NextResponse.json(filteredProducts, { 
             status: 200,
             headers: {
                 'Cache-Control': 'no-store, max-age=0',
