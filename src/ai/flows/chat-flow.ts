@@ -10,16 +10,9 @@
 
 import {ai} from '@/ai/genkit';
 import {generate} from 'genkit/ai';
-import {
-  Message,
-  ToolRequestPart,
-  defineModel,
-  model,
-} from 'genkit/ai/model';
+import {Message} from 'genkit/ai';
 import {
   history,
-  retrieve,
-  session,
   defineConversation,
 } from 'genkit/context';
 import {z} from 'zod';
