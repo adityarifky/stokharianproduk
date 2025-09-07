@@ -60,7 +60,7 @@ const chatFlow = ai.defineFlow(
         // The history is automatically retrieved by defineConversation.
         // We just need to generate the next response.
         const llmResponse = await generate({
-          model: 'googleai/gemini-2.0-flash',
+          model: 'gemini-2.0-flash',
           prompt: input.message, // Send only the new message
           history: await history(), // The history is managed by the session
         });
