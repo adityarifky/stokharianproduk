@@ -62,7 +62,7 @@ const getProductStockTool = ai.defineTool(
 const chatFlow = defineFlow(
     {
       name: 'chatFlow',
-      inputSchema: z.array(z.any()), // Use z.any() for history
+      inputSchema: z.array(z.any()), // Use z.any() to accept the history array from n8n
       outputSchema: z.string(),
     },
     async (history) => {
