@@ -45,32 +45,26 @@ const getProductStockTool = ai.defineTool(
         }
         
         try {
-            const lowerCaseQuery = input.query.toLowerCase();
+            const lowerCaseQuery = input.query.toLowerCase().trim();
             const productsRef = adminDb.collection("products");
 
-            // First, try to find an exact or partial match for category
-            const categoryQuery = productsRef.where('category', '>=', lowerCaseQuery).where('category', '<=', lowerCaseQuery + '\uf8ff');
-            const categorySnapshot = await categoryQuery.get();
-
-            let results: Product[] = [];
-            categorySnapshot.forEach(doc => {
-                const data = doc.data() as Product;
-                results.push({ id: doc.id, ...data });
-            });
-            
-            // Filter again for more precise category matching
-            if (results.length > 0) {
-                 const categoryFiltered = results.filter(p => p.category.toLowerCase().includes(lowerCaseQuery));
-                 if(categoryFiltered.length > 0) {
-                    console.log(`[getProductStockTool] Found ${categoryFiltered.length} item(s) by category.`);
-                    return categoryFiltered.map(({ name, stock, category }) => ({ name, stock, category }));
-                 }
-            }
-            
-            // If no results by category, try searching by product name
             const allProductsSnapshot = await productsRef.get();
             const allProducts = allProductsSnapshot.docs.map(doc => doc.data() as Product);
-            const nameFiltered = allProducts.filter(p => p.name.toLowerCase().includes(lowerCaseQuery));
+
+            // Filter by category first
+            const categoryFiltered = allProducts.filter(p => 
+                p.category.toLowerCase().includes(lowerCaseQuery)
+            );
+
+            if (categoryFiltered.length > 0) {
+                console.log(`[getProductStockTool] Found ${categoryFiltered.length} item(s) by category.`);
+                return categoryFiltered.map(({ name, stock, category }) => ({ name, stock, category }));
+            }
+            
+            // If no category match, filter by product name
+            const nameFiltered = allProducts.filter(p => 
+                p.name.toLowerCase().includes(lowerCaseQuery)
+            );
 
             if (nameFiltered.length > 0) {
                 console.log(`[getProductStockTool] Found ${nameFiltered.length} item(s) by name.`);
@@ -109,19 +103,6 @@ Do not repeat information you have already given unless asked.
 If you don't know the answer, just say "Waduh, aku kurang tau bro, coba tanya yang lain ya."
 `;
 
-const chatPrompt = ai.definePrompt({
-    name: 'chatPrompt',
-    system: systemPrompt,
-    tools: [getProductStockTool],
-    input: {
-      schema: ChatInputSchema,
-    },
-    output: {
-        format: 'text'
-    }
-});
-
-
 const chatFlow = ai.defineFlow(
   {
     name: 'chatFlow',
@@ -131,13 +112,10 @@ const chatFlow = ai.defineFlow(
   async (input) => {
     
     const llmResponse = await ai.generate({
-      prompt: `${systemPrompt}\n\n{{#if history}}HISTORY:\n{{{history}}}{{/if}}\n\nUSER MESSAGE:\n{{{message}}}`,
+      prompt: `${input.history ? `HISTORY:\n${input.history}\n\n` : ''}USER MESSAGE:\n${input.message}`,
       model: 'googleai/gemini-1.5-flash-latest',
       tools: [getProductStockTool],
-      input: input,
-      output: {
-        format: 'text'
-      }
+      system: systemPrompt,
     });
 
     const reply = llmResponse.text();
