@@ -80,8 +80,8 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-        const body = await req.json();
-        const update: StockUpdate = body;
+        // MENERIMA OBJEK TUNGGAL, BUKAN ARRAY
+        const update: StockUpdate = await req.json();
         
         if (!update || typeof update.id !== 'string' || typeof update.stock !== 'number') {
             throw new Error("Invalid payload format. Expected { id: string, stock: number }.");
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
         const productRef = adminDb.collection("products").doc(update.id);
         await productRef.update({ stock: update.stock });
 
-        return NextResponse.json({ message: "Stock updated successfully." }, { status: 200 });
+        return NextResponse.json({ message: `Stock for ${update.id} updated successfully.` }, { status: 200 });
 
     } catch (error: any) {
         console.error("Error in POST /api/stock:", error);
