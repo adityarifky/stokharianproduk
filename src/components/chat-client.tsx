@@ -27,10 +27,15 @@ export function ChatClient() {
   }, [history]);
   
   useEffect(() => {
-    if (sessionEstablished) {
+    if (sessionEstablished && sessionInfo?.name) {
         setHistory([{
             role: 'model',
-            content: [{ text: `Halo ${sessionInfo?.name || ''}! Aku PuffBot. Ada yang bisa aku bantu? Coba tanya "cek stok creampuff" deh.` }]
+            content: [{ text: `Halo ${sessionInfo.name}! Aku PuffBot. Ada yang bisa aku bantu? Coba tanya "cek stok creampuff" deh.` }]
+        }]);
+    } else if (sessionEstablished) {
+        setHistory([{
+            role: 'model',
+            content: [{ text: `Halo! Aku PuffBot. Ada yang bisa aku bantu? Coba tanya "cek stok creampuff" deh.` }]
         }]);
     }
   }, [sessionEstablished, sessionInfo]);
@@ -57,7 +62,7 @@ export function ChatClient() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Gagal terhubung ke AI.');
+        throw new Error(errorData.details || errorData.error || 'Gagal terhubung ke AI.');
       }
 
       const { answer } = await response.json();
