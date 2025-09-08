@@ -122,7 +122,7 @@ const deleteProductTool = ai.defineTool(
 const updateStockTool = ai.defineTool(
   {
     name: 'updateStock',
-    description: "Use this tool to add or subtract stock for a specific product. This tool is for INCREMENTAL changes. For example, if a user says 'tambah 5', use amount: 5. If a user says 'laku 2', use amount: -2.",
+    description: "Use this tool to add or subtract stock for a specific product. This tool is for INCREMENTAL changes. For example, if a user says 'tambah 5', use amount: 5. If a user says 'laku 2' or 'terjual 2', use amount: -2.",
     inputSchema: z.object({
       productName: z.string().describe("The name of the product to update. e.g., 'Baby Puff', 'Millecrepes Coklat'."),
       amount: z.number().int().describe("The amount to add or subtract. Positive for adding stock, negative for reducing stock (sold)."),
@@ -141,13 +141,22 @@ const updateStockTool = ai.defineTool(
     try {
       // Find the product by name first
       const productsRef = adminDb.collection("products");
-      const snapshot = await productsRef.where('name', '==', productName).limit(1).get();
+      // Use a case-insensitive query if possible, or fetch and filter in code for robustness
+      const snapshot = await productsRef.where('name', '>=', productName).where('name', '<=', productName + '\uf8ff').get();
 
-      if (snapshot.empty) {
-        return { success: false, message: `Produk dengan nama "${productName}" tidak ditemukan.` };
+      let productDoc;
+      // Filter for exact case-insensitive match
+      for (const doc of snapshot.docs) {
+          if (doc.data().name.toLowerCase() === productName.toLowerCase()) {
+              productDoc = doc;
+              break;
+          }
       }
 
-      const productDoc = snapshot.docs[0];
+      if (!productDoc) {
+        return { success: false, message: `Produk dengan nama "${productName}" tidak ditemukan.` };
+      }
+      
       const productRef = productDoc.ref;
 
       // Use a transaction to safely update the stock
@@ -187,7 +196,7 @@ Here's how you MUST behave:
 7.  **Menghapus Produk:** Jika user meminta untuk menghapus produk, pertama-tama gunakan \`getProductStock\` untuk mencari produk dan mendapatkan ID-nya. Setelah mendapatkan ID, selalu konfirmasi kembali ke user ("Yakin mau hapus [Nama Produk]?") sebelum menggunakan tool \`deleteProduct\` dengan ID tersebut.
 8.  **Mengubah Stok (PENTING!):** Jika user ingin menambah atau mengurangi stok (misal: "laku 2" atau "tambah 10"), kamu HARUS langsung menggunakan tool \`updateStock\`.
     -   Kamu HARUS memberikan nama produk yang jelas di parameter \`productName\`.
-    -   Kamu HARUS memberikan jumlah perubahan di parameter \`amount\`. Gunakan angka positif untuk menambah (misal: tambah 5 -> amount: 5) dan angka negatif untuk mengurangi (misal: laku 2 -> amount: -2).
+    -   Kamu HARUS memberikan jumlah perubahan di parameter \`amount\`. Gunakan angka positif untuk menambah (misal: tambah 5 -> amount: 5) dan angka negatif untuk mengurangi/terjual (misal: laku 2 -> amount: -2).
     -   JANGAN memanggil tool lain dulu. Langsung panggil \`updateStock\`.
 9.  **Confirm After Action**: After you have successfully used a tool (like addProduct, deleteProduct, or updateStock), you MUST provide a friendly confirmation message to the user in Indonesian, for example: "Oke, sudah beres ya!" or "Sip, produknya sudah aku update."`;
 
@@ -242,3 +251,5 @@ const chatFlow = ai.defineFlow(
 export async function conversationalChat(history: MessageData[]) {
   return await chatFlow(history);
 }
+
+    
