@@ -13,6 +13,7 @@ import {
   FilePenLine,
   Users,
   Croissant,
+  MessageCircle,
 } from "lucide-react";
 import { onAuthStateChanged, type User, signOut } from "firebase/auth";
 import { addDoc, collection, serverTimestamp, doc, onSnapshot } from "firebase/firestore";
@@ -138,6 +139,7 @@ function InnerLayout({ children }: { children: ReactNode }) {
   const menuItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/dashboard/update", label: "Update Produk", icon: FilePenLine },
+    { href: "/dashboard/chat", label: "PuffBot", icon: MessageCircle },
     { href: "/dashboard/produk", label: "Produk", icon: Croissant },
     { href: "/dashboard/riwayat", label: "Riwayat", icon: History },
     { href: "/dashboard/laporan", label: "Laporan", icon: BarChart },
