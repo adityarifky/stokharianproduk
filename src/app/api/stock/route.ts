@@ -79,27 +79,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Internal Server Error: Firebase configuration error.' }, { status: 500 });
     }
 
-    let update: StockUpdate;
     try {
         const body = await req.json();
-        // Changed to handle a single update object
-        update = body; 
-        if (!update || typeof update.id !== 'string' || typeof update.stock !== 'number') {
-            throw new Error("Invalid payload format. Expected { id: string, stock: number }.");
+        const updates = body.updates as StockUpdate[];
+        
+        if (!updates || !Array.isArray(updates) || updates.length === 0) {
+            throw new Error("Invalid payload format. Expected { updates: [{ id: string, stock: number }] }.");
         }
-    } catch (error: any) {
-        return NextResponse.json({ message: `Bad Request: ${error.message}` }, { status: 400 });
-    }
 
-    try {
-        const productRef = adminDb.collection("products").doc(update.id);
-        await productRef.update({ stock: update.stock });
+        const batch = adminDb.batch();
+        updates.forEach(update => {
+            if (typeof update.id !== 'string' || typeof update.stock !== 'number') {
+                throw new Error("Invalid object in updates array. Each object must have an 'id' (string) and 'stock' (number).");
+            }
+            const productRef = adminDb.collection("products").doc(update.id);
+            batch.update(productRef, { stock: update.stock });
+        });
+
+        await batch.commit();
 
         return NextResponse.json({ message: "Stock updated successfully." }, { status: 200 });
 
     } catch (error: any) {
         console.error("Error in POST /api/stock:", error);
-        return NextResponse.json({ message: `Internal Server Error: ${error.message}` }, { status: 500 });
+        return NextResponse.json({ message: `Bad Request: ${error.message}` }, { status: 400 });
     }
 }
 
