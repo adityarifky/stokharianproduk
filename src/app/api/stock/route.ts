@@ -105,3 +105,81 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ message: `Internal Server Error: ${error.message}` }, { status: 500 });
     }
 }
+
+
+interface NewProduct {
+    name: string;
+    category: "Creampuff" | "Cheesecake" | "Millecrepes" | "Minuman" | "Snackbox" | "Lainnya";
+}
+
+export async function PUT(req: NextRequest) {
+    if (!authenticateRequest(req)) {
+        return NextResponse.json({ message: 'Unauthorized: Invalid or missing API Key.' }, { status: 401 });
+    }
+
+    if (!adminDb) {
+      console.error("Firestore Admin is not initialized.");
+      return NextResponse.json({ message: 'Internal Server Error: Firebase configuration error.' }, { status: 500 });
+    }
+
+    try {
+        const body = await req.json() as NewProduct;
+        if (!body.name || !body.category) {
+            return NextResponse.json({ message: 'Bad Request: "name" and "category" are required.' }, { status: 400 });
+        }
+
+        const newProductRef = adminDb.collection("products").doc();
+        const newProduct = {
+            id: newProductRef.id,
+            name: body.name,
+            category: body.category,
+            stock: 0,
+            image: "https://placehold.co/600x400.png",
+        };
+
+        await newProductRef.set(newProduct);
+        
+        return NextResponse.json({ message: `Product "${body.name}" created successfully.`, product: newProduct }, { status: 201 });
+
+    } catch (error: any) {
+        console.error("Error in PUT /api/stock:", error);
+        return NextResponse.json({ message: `Internal Server Error: ${error.message}` }, { status: 500 });
+    }
+}
+
+interface DeleteProduct {
+    id: string;
+}
+
+export async function DELETE(req: NextRequest) {
+    if (!authenticateRequest(req)) {
+        return NextResponse.json({ message: 'Unauthorized: Invalid or missing API Key.' }, { status: 401 });
+    }
+    
+    if (!adminDb) {
+      console.error("Firestore Admin is not initialized.");
+      return NextResponse.json({ message: 'Internal Server Error: Firebase configuration error.' }, { status: 500 });
+    }
+
+    try {
+        const body = await req.json() as DeleteProduct;
+        if (!body.id) {
+            return NextResponse.json({ message: 'Bad Request: "id" is required.' }, { status: 400 });
+        }
+
+        const productRef = adminDb.collection("products").doc(body.id);
+        const doc = await productRef.get();
+
+        if (!doc.exists) {
+            return NextResponse.json({ message: 'Product not found.' }, { status: 404 });
+        }
+        
+        await productRef.delete();
+
+        return NextResponse.json({ message: `Product with ID "${body.id}" deleted successfully.` }, { status: 200 });
+
+    } catch (error: any) {
+        console.error("Error in DELETE /api/stock:", error);
+        return NextResponse.json({ message: `Internal Server Error: ${error.message}` }, { status: 500 });
+    }
+}
