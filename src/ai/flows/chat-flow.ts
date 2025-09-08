@@ -8,7 +8,7 @@ import { ai } from '@/ai/genkit';
 import { adminDb } from '@/lib/firebase/server';
 import type { Product } from '@/lib/types';
 import { z } from 'zod';
-import { defineFlow, type MessageData } from 'genkit/ai';
+import { defineFlow, type MessageData } from 'genkit';
 
 // Define the tool for getting product stock.
 const getProductStockTool = ai.defineTool(
