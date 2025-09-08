@@ -174,11 +174,11 @@ const chatFlow = ai.defineFlow(
   },
   async (history) => {
     const {output} = await ai.generate({
-      model: 'googleai/gemini-2.0-flash',
+      model: 'googleai/gemini-pro',
       tools: [getProductStockTool, addProductTool, deleteProductTool, updateStockTool],
       prompt: {
-          system: systemPrompt,
-          history: history,
+        system: systemPrompt,
+        history: history,
       },
       config: {
         multiTurn: true
