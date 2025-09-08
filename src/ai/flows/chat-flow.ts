@@ -138,8 +138,11 @@ const updateStockTool = ai.defineTool(
       return { success: false, message: "Database error." };
     }
     try {
+      const batch = adminDb.batch();
       const productRef = adminDb.collection("products").doc(productId);
-      await productRef.update({ stock: newStock });
+      batch.update(productRef, { stock: newStock });
+      await batch.commit();
+
       return { success: true, message: "Stock updated successfully." };
     } catch (error: any)      {
       return { success: false, message: `Failed to update stock: ${error.message}` };
@@ -195,13 +198,19 @@ const chatFlow = ai.defineFlow(
 
     // Check for tool calls
     if (output.toolCalls && output.toolCalls.length > 0) {
-      // If there are tool calls, we let the external system (like n8n) handle them.
-      // We can return a specific message or handle it as needed. For n8n, it will just use the tool call data.
-      // This part is implicitly handled by n8n's AI Agent node.
+      const toolCall = output.toolCalls[0];
+      const toolResponse = await ai.runTool(toolCall);
+
+      const finalResult = await ai.generate({
+          system: systemPrompt,
+          messages: [...history, result.message, { role: 'tool', content: [toolResponse] }],
+          model: 'googleai/gemini-pro',
+          tools: [getProductStockTool, addProductTool, deleteProductTool, updateStockTool],
+      });
+      return finalResult.text;
     }
     
-    // Return the text response. If a tool was called, the text might be empty,
-    // but we will add a final confirmation prompt rule to ensure it's not.
+    // Return the text response.
     return output.text || "Ada yang bisa dibantu lagi?";
   }
 );

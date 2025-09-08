@@ -81,22 +81,14 @@ export async function POST(req: NextRequest) {
 
     try {
         const body = await req.json();
-        const updates = body.updates as StockUpdate[];
+        const update: StockUpdate = body;
         
-        if (!updates || !Array.isArray(updates) || updates.length === 0) {
-            throw new Error("Invalid payload format. Expected { updates: [{ id: string, stock: number }] }.");
+        if (!update || typeof update.id !== 'string' || typeof update.stock !== 'number') {
+            throw new Error("Invalid payload format. Expected { id: string, stock: number }.");
         }
 
-        const batch = adminDb.batch();
-        updates.forEach(update => {
-            if (typeof update.id !== 'string' || typeof update.stock !== 'number') {
-                throw new Error("Invalid object in updates array. Each object must have an 'id' (string) and 'stock' (number).");
-            }
-            const productRef = adminDb.collection("products").doc(update.id);
-            batch.update(productRef, { stock: update.stock });
-        });
-
-        await batch.commit();
+        const productRef = adminDb.collection("products").doc(update.id);
+        await productRef.update({ stock: update.stock });
 
         return NextResponse.json({ message: "Stock updated successfully." }, { status: 200 });
 
