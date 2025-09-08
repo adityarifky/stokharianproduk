@@ -9,6 +9,7 @@ import {adminDb} from '@/lib/firebase/server';
 import type {Product} from '@/lib/types';
 import {z} from 'zod';
 import {type MessageData} from 'genkit';
+import * as admin from 'firebase-admin';
 
 // Tool 1: Get Product Stock
 const getProductStockTool = ai.defineTool(
