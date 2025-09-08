@@ -125,7 +125,7 @@ const updateStockTool = ai.defineTool(
     description: "Use this tool to update the stock quantity of a product. It requires the product ID and the final new stock quantity. You must calculate the final stock quantity yourself based on the current stock and the user's request.",
     inputSchema: z.object({
       productId: z.string().describe("The ID of the product to update."),
-      newStock: z.number().int().min(0).describe("The final, calculated stock count after the update. Not the amount to add or subtract. For example, if current stock is 10 and user says 'laku 2', this value MUST be 8."),
+      newStock: z.number().int().min(0).describe("The final, calculated stock count after the update. This is NOT the amount to add or subtract. For example, if current stock is 10 and user says 'laku 2', this value MUST be 8. You must calculate this value."),
     }),
     outputSchema: z.object({
       success: z.boolean(),
