@@ -8,7 +8,7 @@ import { ai } from '@/ai/genkit';
 import { adminDb } from '@/lib/firebase/server';
 import type { Product } from '@/lib/types';
 import { z } from 'zod';
-import { defineFlow, type MessageData } from 'genkit';
+import { type MessageData } from 'genkit';
 
 // Define the tool for getting product stock.
 const getProductStockTool = ai.defineTool(
@@ -59,7 +59,7 @@ const getProductStockTool = ai.defineTool(
 );
 
 // Define the main chat flow.
-const chatFlow = defineFlow(
+const chatFlow = ai.defineFlow(
   {
     name: 'chatFlow',
     inputSchema: z.array(z.any()), // Use z.any() to accept the history array
