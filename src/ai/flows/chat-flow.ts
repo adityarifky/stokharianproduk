@@ -60,13 +60,13 @@ const getProductStockTool = ai.defineTool(
 
 // Define the main chat flow.
 const chatFlow = defineFlow(
-    {
-      name: 'chatFlow',
-      inputSchema: z.array(z.any()), // Use z.any() to accept the history array from n8n
-      outputSchema: z.string(),
-    },
-    async (history) => {
-      const systemPrompt = `You are PuffBot, a friendly and helpful assistant for Dreampuff, a pastry shop.
+  {
+    name: 'chatFlow',
+    inputSchema: z.array(z.any()), // Use z.any() to accept the history array
+    outputSchema: z.string(),
+  },
+  async (history) => {
+    const systemPrompt = `You are PuffBot, a friendly and helpful assistant for Dreampuff, a pastry shop.
 Your main task is to provide information about product stock.
 Always answer in Indonesian in a friendly, casual, and conversational tone. Make your answers feel natural, not robotic.
 Your answers should be comprehensive and conversational.
@@ -80,21 +80,22 @@ Here's how you MUST behave:
 5.  **Handle Zero Stock:** If a product has 0 stock, explicitly state that it is "habis" (sold out) or "kosong".
 `;
 
-      const { output } = await ai.generate({
-        model: 'googleai/gemini-2.0-flash',
-        tools: [getProductStockTool],
-        prompt: {
-            system: systemPrompt,
-            history: history,
-        },
-      });
+    const { output } = await ai.generate({
+      model: 'googleai/gemini-2.0-flash',
+      tools: [getProductStockTool],
+      prompt: {
+          system: systemPrompt,
+          history: history,
+      },
+    });
 
-      if (!output) {
-        return "Maaf, terjadi kesalahan dan aku tidak bisa memberikan jawaban.";
-      }
-      return output.text;
+    if (!output) {
+      return "Maaf, terjadi kesalahan dan aku tidak bisa memberikan jawaban.";
     }
+    return output.text;
+  }
 );
+
 
 // Wrapper function to be called from the API route.
 export async function conversationalChat(history: MessageData[]) {
