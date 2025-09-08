@@ -43,7 +43,7 @@ const getProductStockTool = ai.defineTool(
       
       const lowerCaseQuery = query.toLowerCase().trim();
       const filteredProducts = allProducts.filter(p => 
-        p.name.toLowerCase().includes(lowerCaseQuery) || 
+        p.name.toLowerCase().includes(lowerCaseQueue) || 
         p.category.toLowerCase().includes(lowerCaseQuery)
       );
       
@@ -176,10 +176,10 @@ const chatFlow = ai.defineFlow(
     const {output} = await ai.generate({
       model: 'googleai/gemini-pro',
       tools: [getProductStockTool, addProductTool, deleteProductTool, updateStockTool],
-      prompt: {
-        system: systemPrompt,
-        history: history,
-      },
+      prompt: [
+        {role: 'system', content: [{text: systemPrompt}]},
+        ...history
+      ],
       config: {
         multiTurn: true
       }
