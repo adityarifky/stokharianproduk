@@ -172,13 +172,15 @@ const chatFlow = ai.defineFlow(
     outputSchema: z.string(),
   },
   async (history) => {
+    const chatPrompt = [
+      {role: 'system', content: [{text: systemPrompt}]},
+      ...history,
+    ];
+
     const {output} = await ai.generate({
       model: 'googleai/gemini-pro',
       tools: [getProductStockTool, addProductTool, deleteProductTool, updateStockTool],
-      prompt: [
-        {role: 'system', content: [{text: systemPrompt}]},
-        ...history
-      ],
+      prompt: chatPrompt,
       config: {
         multiTurn: true
       }

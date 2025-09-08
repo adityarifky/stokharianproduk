@@ -79,24 +79,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Internal Server Error: Firebase configuration error.' }, { status: 500 });
     }
 
-    let updates: StockUpdate[];
+    let update: StockUpdate;
     try {
         const body = await req.json();
-        updates = body.updates;
-        if (!Array.isArray(updates) || updates.some(u => typeof u.id !== 'string' || typeof u.stock !== 'number')) {
-            throw new Error("Invalid payload format.");
+        // Changed to handle a single update object
+        update = body; 
+        if (!update || typeof update.id !== 'string' || typeof update.stock !== 'number') {
+            throw new Error("Invalid payload format. Expected { id: string, stock: number }.");
         }
     } catch (error: any) {
         return NextResponse.json({ message: `Bad Request: ${error.message}` }, { status: 400 });
     }
 
     try {
-        const batch = adminDb.batch();
-        updates.forEach(update => {
-            const productRef = adminDb.collection("products").doc(update.id);
-            batch.update(productRef, { stock: update.stock });
-        });
-        await batch.commit();
+        const productRef = adminDb.collection("products").doc(update.id);
+        await productRef.update({ stock: update.stock });
 
         return NextResponse.json({ message: "Stock updated successfully." }, { status: 200 });
 
