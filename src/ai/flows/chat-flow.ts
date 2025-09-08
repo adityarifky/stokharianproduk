@@ -122,10 +122,10 @@ const deleteProductTool = ai.defineTool(
 const updateStockTool = ai.defineTool(
   {
     name: 'updateStock',
-    description: "Use this tool to update the stock quantity of a product. It requires the product ID and the final new stock quantity. You must calculate the final stock quantity yourself.",
+    description: "Use this tool to update the stock quantity of a product. It requires the product ID and the final new stock quantity. You must calculate the final stock quantity yourself based on the current stock and the user's request.",
     inputSchema: z.object({
       productId: z.string().describe("The ID of the product to update."),
-      newStock: z.number().int().min(0).describe("The final stock count after the update. Not the amount to add or subtract."),
+      newStock: z.number().int().min(0).describe("The final, calculated stock count after the update. Not the amount to add or subtract. For example, if current stock is 10 and user says 'laku 2', this value MUST be 8."),
     }),
     outputSchema: z.object({
       success: z.boolean(),
@@ -141,7 +141,7 @@ const updateStockTool = ai.defineTool(
       const productRef = adminDb.collection("products").doc(productId);
       await productRef.update({ stock: newStock });
       return { success: true, message: "Stock updated successfully." };
-    } catch (error: any) {
+    } catch (error: any)      {
       return { success: false, message: `Failed to update stock: ${error.message}` };
     }
   }
@@ -160,12 +160,10 @@ Here's how you MUST behave:
 6.  **Be Comprehensive but Conversational:** Provide complete information but in a way that feels like a natural conversation.
 7.  **Menambah Produk:** Jika user meminta untuk menambah produk baru, gunakan tool \`addProduct\`. Pastikan kamu menanyakan kategori produk jika user tidak menyediakannya.
 8.  **Menghapus Produk:** Jika user meminta untuk menghapus produk, pertama-tama gunakan \`getProductStock\` untuk mencari produk dan mendapatkan ID-nya. Setelah mendapatkan ID, selalu konfirmasi kembali ke user ("Yakin mau hapus [Nama Produk]?") sebelum menggunakan tool \`deleteProduct\` dengan ID tersebut.
-9.  **Mengubah Stok**: Jika user ingin menambah atau mengurangi stok (misal: "laku 2" atau "tambah 10"), kamu HARUS melakukan ini:
-    a. Pertama, panggil \`getProductStock\` untuk mendapatkan jumlah stok saat ini dari produk tersebut.
-    b. Kedua, hitung sendiri jumlah stok akhirnya (stok saat ini - laku, atau stok saat ini + tambah).
-    c. Ketiga, panggil tool \`updateStock\` dengan \`productId\` dan jumlah stok akhir yang sudah kamu hitung (\`newStock\`). Jangan pernah bertanya ke user berapa jumlah stok akhirnya, kamu harus menghitungnya.
-10. **Confirm After Action**: After you have successfully used a tool (like addProduct, deleteProduct, or updateStock), you MUST provide a friendly confirmation message to the user in Indonesian, for example: "Oke, sudah beres ya!" or "Sip, produknya sudah aku update."
-`;
+9.  **Mengubah Stok (PENTING!):** Jika user ingin menambah atau mengurangi stok (misal: "laku 2" atau "tambah 10"), kamu HARUS melakukan DUA langkah:
+    a. PERTAMA, selalu panggil tool \`getProductStock\` untuk mendapatkan jumlah stok saat ini dari produk tersebut. Ini wajib.
+    b. KEDUA, setelah mendapatkan stok saat ini, hitung sendiri jumlah stok akhirnya (stok saat ini - laku, atau stok saat ini + tambah). Lalu, panggil tool \`updateStock\` dengan \`productId\` dan jumlah stok akhir yang sudah kamu hitung (\`newStock\`). Jangan pernah bertanya ke user berapa jumlah stok akhirnya, kamu harus menghitungnya.
+10. **Confirm After Action**: After you have successfully used a tool (like addProduct, deleteProduct, or updateStock), you MUST provide a friendly confirmation message to the user in Indonesian, for example: "Oke, sudah beres ya!" or "Sip, produknya sudah aku update."`;
 
 const chatFlow = ai.defineFlow(
   {
