@@ -4,11 +4,11 @@
  *
  * - conversationalChat - A function that handles the chat conversation.
  */
-import { ai } from '@/ai/genkit';
-import { adminDb } from '@/lib/firebase/server';
-import type { Product } from '@/lib/types';
-import { z } from 'zod';
-import { type MessageData } from 'genkit';
+import {ai} from '@/ai/genkit';
+import {adminDb} from '@/lib/firebase/server';
+import type {Product} from '@/lib/types';
+import {z} from 'zod';
+import {type MessageData} from 'genkit';
 
 // Tool 1: Get Product Stock
 const getProductStockTool = ai.defineTool(
@@ -32,9 +32,10 @@ const getProductStockTool = ai.defineTool(
       return [{ id: "error", name: "Database Error", stock: 0, category: "Error" }];
     }
     try {
-      const productsQuery = adminDb.collection("products");
+      let productsQuery: admin.firestore.Query = adminDb.collection("products");
+      
       const productSnapshot = await productsQuery.get();
-      const allProducts: Product[] = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+      let allProducts: Product[] = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
 
       if (!query) return allProducts;
       
@@ -119,10 +120,10 @@ const deleteProductTool = ai.defineTool(
 const updateStockTool = ai.defineTool(
   {
     name: 'updateStock',
-    description: "Use this tool to update the stock quantity of a product. It requires the product ID and the final new stock quantity.",
+    description: "Use this tool to update the stock quantity of a product. It requires the product ID and the final new stock quantity. You must calculate the final stock quantity yourself.",
     inputSchema: z.object({
       productId: z.string().describe("The ID of the product to update."),
-      newStock: z.number().int().min(0).describe("The final stock count after the update."),
+      newStock: z.number().int().min(0).describe("The final stock count after the update. Not the amount to add or subtract."),
     }),
     outputSchema: z.object({
       success: z.boolean(),
@@ -144,15 +145,7 @@ const updateStockTool = ai.defineTool(
   }
 );
 
-// Define the main chat flow.
-const chatFlow = ai.defineFlow(
-  {
-    name: 'chatFlow',
-    inputSchema: z.array(z.any()), // Use z.any() to accept the history array
-    outputSchema: z.string(),
-  },
-  async (history) => {
-    const systemPrompt = `You are PuffBot, a friendly and helpful assistant for Dreampuff, a pastry shop.
+const systemPrompt = `You are PuffBot, a friendly and helpful assistant for Dreampuff, a pastry shop.
 Your main task is to provide information about product stock and manage it.
 Always answer in Indonesian in a friendly, casual, and conversational tone. Make your answers feel natural, not robotic.
 
@@ -171,13 +164,23 @@ Here's how you MUST behave:
     c. Ketiga, panggil tool \`updateStock\` dengan \`productId\` dan jumlah stok akhir yang sudah kamu hitung (\`newStock\`). Jangan pernah bertanya ke user berapa jumlah stok akhirnya, kamu harus menghitungnya.
 `;
 
-    const { output } = await ai.generate({
+const chatFlow = ai.defineFlow(
+  {
+    name: 'chatFlow',
+    inputSchema: z.custom<MessageData[]>(),
+    outputSchema: z.string(),
+  },
+  async (history) => {
+    const {output} = await ai.generate({
       model: 'googleai/gemini-2.0-flash',
       tools: [getProductStockTool, addProductTool, deleteProductTool, updateStockTool],
       prompt: {
           system: systemPrompt,
           history: history,
       },
+      config: {
+        multiTurn: true
+      }
     });
 
     if (!output) {

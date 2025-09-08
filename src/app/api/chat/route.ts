@@ -1,14 +1,14 @@
 
 import { NextRequest, NextResponse } from "next/server";
-import { type MessageData } from "genkit/ai";
+import { type MessageData } from "genkit";
 import { conversationalChat } from "@/ai/flows/chat-flow";
 
 export const dynamic = 'force-dynamic';
 
-// This endpoint is now connected to the actual Genkit flow.
 export async function POST(req: NextRequest) {
   try {
-    const { history } = (await req.json()) as { history: MessageData[] };
+    const body = await req.json();
+    const history: MessageData[] = body.history;
 
     if (!history || !Array.isArray(history)) {
       return NextResponse.json(
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-
+    
     // Call the actual conversational chat flow with the history.
     const answer = await conversationalChat(history);
 
@@ -26,10 +26,11 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error("Error in /api/chat:", error);
+    // Provide a more detailed error message in the response for debugging
     return NextResponse.json(
       {
         error: "An internal server error occurred.",
-        details: error.message,
+        details: error.message || String(error),
       },
       { status: 500 }
     );
