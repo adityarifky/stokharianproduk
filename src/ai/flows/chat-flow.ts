@@ -10,7 +10,7 @@ import {adminDb} from '@/lib/firebase/server';
 import type {Product} from '@/lib/types';
 import {z} from 'zod';
 import {type MessageData} from 'genkit';
-import * as admin from 'firebase-admin';
+import * * as admin from 'firebase-admin';
 
 // Tool 1: Get Product Stock
 const getProductStockTool = ai.defineTool(
@@ -122,10 +122,10 @@ const deleteProductTool = ai.defineTool(
 const updateStockTool = ai.defineTool(
   {
     name: 'updateStock',
-    description: "Use this tool to update the stock quantity of a product. It requires the product ID and the final new stock quantity. You must calculate the final stock quantity yourself based on the current stock and the user's request.",
+    description: "Use this tool to update the stock quantity of a specific product. This tool requires the product's ID and the final, calculated new stock quantity. You MUST calculate the final stock quantity yourself based on the user's request (e.g., 'laku 2', 'tambah 5') and the current stock fetched from getProductStock.",
     inputSchema: z.object({
-      productId: z.string().describe("The ID of the product to update."),
-      newStock: z.number().int().min(0).describe("The final, calculated stock count after the update. This is NOT the amount to add or subtract. For example, if current stock is 10 and user says 'laku 2', this value MUST be 8. You must calculate this value."),
+      productId: z.string().describe("The ID of the product to update. This must be obtained from the getProductStock tool."),
+      newStock: z.number().int().min(0).describe("The final, calculated stock count after the update. This is NOT the amount to add or subtract. For example, if current stock is 10 and user says 'laku 2', this value MUST be 8. You must calculate this value yourself."),
     }),
     outputSchema: z.object({
       success: z.boolean(),
@@ -160,10 +160,12 @@ Here's how you MUST behave:
 6.  **Be Comprehensive but Conversational:** Provide complete information but in a way that feels like a natural conversation.
 7.  **Menambah Produk:** Jika user meminta untuk menambah produk baru, gunakan tool \`addProduct\`. Pastikan kamu menanyakan kategori produk jika user tidak menyediakannya.
 8.  **Menghapus Produk:** Jika user meminta untuk menghapus produk, pertama-tama gunakan \`getProductStock\` untuk mencari produk dan mendapatkan ID-nya. Setelah mendapatkan ID, selalu konfirmasi kembali ke user ("Yakin mau hapus [Nama Produk]?") sebelum menggunakan tool \`deleteProduct\` dengan ID tersebut.
-9.  **Mengubah Stok (PENTING!):** Jika user ingin menambah atau mengurangi stok (misal: "laku 2" atau "tambah 10"), kamu HARUS melakukan DUA langkah:
-    a. PERTAMA, selalu panggil tool \`getProductStock\` untuk mendapatkan jumlah stok saat ini dari produk tersebut. Ini wajib.
-    b. KEDUA, setelah mendapatkan stok saat ini, hitung sendiri jumlah stok akhirnya (stok saat ini - laku, atau stok saat ini + tambah). Lalu, panggil tool \`updateStock\` dengan \`productId\` dan jumlah stok akhir yang sudah kamu hitung (\`newStock\`). Jangan pernah bertanya ke user berapa jumlah stok akhirnya, kamu harus menghitungnya.
+9.  **Mengubah Stok (PENTING!):** Jika user ingin menambah atau mengurangi stok (misal: "laku 2" atau "tambah 10"), kamu HARUS melakukan TIGA langkah WAJIB berurutan:
+    a. PERTAMA, panggil tool \`getProductStock\` untuk mendapatkan jumlah stok saat ini dari produk tersebut. Ini wajib untuk mendapatkan ID dan stok terbaru.
+    b. KEDUA, setelah mendapatkan stok saat ini, hitung sendiri jumlah stok akhirnya (stok saat ini - laku, atau stok saat ini + tambah).
+    c. KETIGA, panggil tool \`updateStock\` dengan \`productId\` dan jumlah stok akhir yang sudah kamu hitung (\`newStock\`). Jangan pernah bertanya ke user berapa jumlah stok akhirnya, kamu harus menghitungnya.
 10. **Confirm After Action**: After you have successfully used a tool (like addProduct, deleteProduct, or updateStock), you MUST provide a friendly confirmation message to the user in Indonesian, for example: "Oke, sudah beres ya!" or "Sip, produknya sudah aku update."`;
+
 
 const chatFlow = ai.defineFlow(
   {
@@ -172,23 +174,35 @@ const chatFlow = ai.defineFlow(
     outputSchema: z.string(),
   },
   async (history) => {
-    const chatPrompt = {
+    // Construct the prompt for the model.
+    const prompt = {
       system: systemPrompt,
-      history: history,
+      messages: [...history],
       model: 'googleai/gemini-pro',
       tools: [getProductStockTool, addProductTool, deleteProductTool, updateStockTool],
       config: {
         multiTurn: true
       }
-    }
-    
-    const result = await ai.generate(chatPrompt);
+    };
+
+    // Generate a response.
+    const result = await ai.generate(prompt);
     const output = result.output();
 
     if (!output) {
       return "Maaf, terjadi kesalahan dan aku tidak bisa memberikan jawaban.";
     }
-    return output.text;
+
+    // Check for tool calls
+    if (output.toolCalls && output.toolCalls.length > 0) {
+      // If there are tool calls, we let the external system (like n8n) handle them.
+      // We can return a specific message or handle it as needed. For n8n, it will just use the tool call data.
+      // This part is implicitly handled by n8n's AI Agent node.
+    }
+    
+    // Return the text response. If a tool was called, the text might be empty,
+    // but we will add a final confirmation prompt rule to ensure it's not.
+    return output.text || "Ada yang bisa dibantu lagi?";
   }
 );
 
