@@ -172,19 +172,18 @@ const chatFlow = ai.defineFlow(
     outputSchema: z.string(),
   },
   async (history) => {
-    const chatPrompt = [
-      {role: 'system', content: [{text: systemPrompt}]},
-      ...history,
-    ];
-
-    const {output} = await ai.generate({
+    const chatPrompt = {
+      system: systemPrompt,
+      history: history,
       model: 'googleai/gemini-pro',
       tools: [getProductStockTool, addProductTool, deleteProductTool, updateStockTool],
-      prompt: chatPrompt,
       config: {
         multiTurn: true
       }
-    });
+    }
+    
+    const result = await ai.generate(chatPrompt);
+    const output = result.output();
 
     if (!output) {
       return "Maaf, terjadi kesalahan dan aku tidak bisa memberikan jawaban.";
@@ -198,3 +197,5 @@ const chatFlow = ai.defineFlow(
 export async function conversationalChat(history: MessageData[]) {
   return await chatFlow(history);
 }
+
+    
