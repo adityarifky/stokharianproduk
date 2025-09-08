@@ -43,7 +43,7 @@ const getProductStockTool = ai.defineTool(
       
       const lowerCaseQuery = query.toLowerCase().trim();
       const filteredProducts = allProducts.filter(p => 
-        p.name.toLowerCase().includes(lowerCaseQueue) || 
+        p.name.toLowerCase().includes(lowerCaseQuery) || 
         p.category.toLowerCase().includes(lowerCaseQuery)
       );
       
@@ -164,6 +164,7 @@ Here's how you MUST behave:
     a. Pertama, panggil \`getProductStock\` untuk mendapatkan jumlah stok saat ini dari produk tersebut.
     b. Kedua, hitung sendiri jumlah stok akhirnya (stok saat ini - laku, atau stok saat ini + tambah).
     c. Ketiga, panggil tool \`updateStock\` dengan \`productId\` dan jumlah stok akhir yang sudah kamu hitung (\`newStock\`). Jangan pernah bertanya ke user berapa jumlah stok akhirnya, kamu harus menghitungnya.
+10. **Confirm After Action**: After you have successfully used a tool (like addProduct, deleteProduct, or updateStock), you MUST provide a friendly confirmation message to the user in Indonesian, for example: "Oke, sudah beres ya!" or "Sip, produknya sudah aku update."
 `;
 
 const chatFlow = ai.defineFlow(
