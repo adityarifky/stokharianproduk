@@ -5,6 +5,8 @@ import { adminDb } from "@/lib/firebase/server";
 import type { Product } from "@/lib/types";
 
 export const dynamic = 'force-dynamic';
+// Set a longer timeout for AI operations
+export const maxDuration = 60; 
 export const revalidate = 0;
 
 // Fungsi untuk mengambil semua produk dari Firestore
@@ -37,10 +39,10 @@ export async function POST(req: NextRequest) {
       );
     }
     
-    // 1. Ambil daftar produk terbaru dari Firestore
+    // 1. Ambil daftar produk terbaru dari Firestore secara otomatis.
     const productList = await getAllProducts();
 
-    // 2. Sertakan history dan productList saat memanggil flow AI
+    // 2. Sertakan history dan productList saat memanggil flow AI.
     const answer = await conversationalChat({ history, productList });
 
     return NextResponse.json({ answer });

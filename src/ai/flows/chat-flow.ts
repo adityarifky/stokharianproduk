@@ -7,6 +7,8 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
 import {type MessageData} from 'genkit';
+import { adminDb } from '@/lib/firebase/server';
+import { FieldValue } from 'firebase-admin/firestore';
 
 // Tool: Update Stock Quantity
 // Tool ini dieksekusi oleh AI ketika user ingin mengubah jumlah stok.
@@ -24,16 +26,17 @@ const updateStockTool = ai.defineTool(
     }),
   },
   async ({ productId, amount }) => {
-    // Logika untuk memanggil API internal-mu untuk update stok
-    // Ini hanya contoh, sesuaikan dengan implementasi API-mu
-    console.log(`Tool 'updateStock' dipanggil: productId=${productId}, amount=${amount}`);
-    
-    // Asumsi kamu punya fungsi untuk berinteraksi dengan database
-    // import { adminDb } from '@/lib/firebase/server';
-    // const productRef = adminDb.collection("products").doc(productId);
-    // await productRef.update({ stock: admin.firestore.FieldValue.increment(amount) });
-
-    return { success: true, message: `Stok untuk produk ID ${productId} berhasil diubah.` };
+    if (!adminDb) {
+      return { success: false, message: "Database tidak terinisialisasi." };
+    }
+    try {
+      const productRef = adminDb.collection("products").doc(productId);
+      await productRef.update({ stock: FieldValue.increment(amount) });
+      return { success: true, message: `Stok untuk produk ID ${productId} berhasil diubah.` };
+    } catch (error) {
+      console.error(`Tool 'updateStock' gagal:`, error);
+      return { success: false, message: `Gagal mengubah stok untuk produk ID ${productId}.` };
+    }
   }
 );
 
@@ -47,17 +50,17 @@ const ChatFlowInputSchema = z.object({
         name: z.string(),
         stock: z.number(),
         category: z.string(),
-    })).describe("Daftar lengkap semua produk yang tersedia beserta ID, nama, stok, dan kategori.")
+    })).optional().describe("Daftar lengkap semua produk yang tersedia beserta ID, nama, stok, dan kategori.")
 });
 
 // System Prompt yang diperbarui dan lebih cerdas
 const systemPrompt = `Anda adalah PuffBot, asisten AI untuk toko kue Dreampuff. Kepribadian Anda ramah, santai, dan profesional. Selalu panggil pengguna "bro".
 
 # PERATURAN UTAMA
-1.  **EKSEKUSI PERINTAH (PRIORITAS #1):** Jika pesan pengguna adalah perintah untuk mengubah data (contoh: "tambah stok", "laku 2", "stoknya jadi 5"), Anda WAJIB langsung memanggil `tool` yang sesuai. JANGAN bertanya untuk konfirmasi. Langsung eksekusi. Gunakan daftar produk di bawah sebagai referensi utama untuk mendapatkan `productId`.
-2.  **JAWAB PERTANYAAN (PRIORITAS #2):** Jika bukan perintah, jawab pertanyaan pengguna berdasarkan histori percakapan dan daftar produk yang tersedia.
+1.  **EKSEKUSI PERINTAH (PRIORITAS #1):** Jika pesan pengguna adalah perintah untuk mengubah data (contoh: "tambah stok", "laku 2", "stoknya jadi 5"), Anda WAJIB langsung memanggil `tool` yang sesuai. JANGAN bertanya untuk konfirmasi. Langsung eksekusi. Gunakan daftar produk di bawah sebagai referensi utama untuk mendapatkan `productId`. Jika produk tidak ditemukan, beri tahu user.
+2.  **JAWAB PERTANYAAN (PRIORITAS #2):** Jika bukan perintah, jawab pertanyaan pengguna berdasarkan histori percakapan dan daftar produk yang tersedia. Jika tidak ada daftar produk, minta maaf dan katakan ada masalah.
 3.  **BAHASA:** Selalu jawab dalam Bahasa Indonesia yang santai.
-4.  **JANGAN HALUSINASI:** Jika produk yang disebut tidak ada di daftar, beri tahu pengguna dengan sopan.
+4.  **PERHITUNGAN AMOUNT:** Jika user bilang "sisa 5" dan stok awal 12, maka `amount` adalah -7. Jika user bilang "stoknya jadi 10" dan stok awal 8, maka `amount` adalah 2.
 
 ---
 Berikut adalah daftar produk yang tersedia saat ini. Gunakan ini sebagai sumber kebenaranmu.
@@ -75,6 +78,11 @@ const chatFlow = ai.defineFlow(
   },
   async ({ history, productList }) => {
     
+    // Check if product list is empty or not provided
+    if (!productList || productList.length === 0) {
+      return "Waduh bro, maaf nih, aku lagi gabisa lihat daftar produknya. Kayaknya ada masalah teknis.";
+    }
+    
     const result = await ai.generate({
       system: systemPrompt,
       prompt: { productList }, // Melewatkan daftar produk ke dalam prompt
@@ -82,8 +90,8 @@ const chatFlow = ai.defineFlow(
       model: 'googleai/gemini-1.5-flash-preview',
       tools: [updateStockTool],
       config: {
-        multiTurn: true
-      }
+        multiTurn: true, // Allow multi-turn conversations
+      },
     });
 
     const output = result.output();
@@ -100,7 +108,7 @@ const chatFlow = ai.defineFlow(
       const toolResponse = await ai.runTool(toolCall);
       console.log('Respon dari tool:', toolResponse);
 
-      // Lanjutkan percakapan dengan hasil dari tool
+      // Lanjutkan percakapan dengan hasil dari tool untuk memberikan respons akhir
       const finalResult = await ai.generate({
           system: systemPrompt,
           prompt: { productList },
