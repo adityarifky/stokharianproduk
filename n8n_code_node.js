@@ -1,3 +1,4 @@
+
 // --- Versi Final yang Paling Lengkap & Cerdas (Versi 9 - Back to Basics) ---
 
 // Mengambil data input dari node sebelumnya. Ini cara yang paling standar dan andal.
