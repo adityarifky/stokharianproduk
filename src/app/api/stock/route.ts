@@ -65,7 +65,8 @@ export async function GET(req: NextRequest) {
 }
 
 interface StockUpdate {
-    id: string;
+    id?: string;
+    name?: string;
     stock: number;
 }
 
@@ -80,17 +81,42 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-        // MENERIMA OBJEK TUNGGAL, BUKAN ARRAY
         const update: StockUpdate = await req.json();
         
-        if (!update || typeof update.id !== 'string' || typeof update.stock !== 'number') {
-            throw new Error("Invalid payload format. Expected { id: string, stock: number }.");
+        if (typeof update.stock !== 'number') {
+             return NextResponse.json({ message: 'Bad Request: "stock" field is required and must be a number.' }, { status: 400 });
         }
 
-        const productRef = adminDb.collection("products").doc(update.id);
+        let productId: string | undefined = update.id;
+        let productName: string | undefined = update.name;
+
+        // Jika update berdasarkan NAMA, cari ID-nya dulu
+        if (productName) {
+            const productsQuery = adminDb.collection("products");
+            const productSnapshot = await productsQuery.get();
+            const searchName = productName.toLowerCase().trim();
+            let found = false;
+
+            for (const doc of productSnapshot.docs) {
+                if (doc.data().name.toLowerCase().trim() === searchName) {
+                    productId = doc.id;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                return NextResponse.json({ message: `Product with name "${productName}" not found.` }, { status: 404 });
+            }
+        }
+
+        if (!productId) {
+            return NextResponse.json({ message: 'Bad Request: Either "id" or "name" is required to update stock.' }, { status: 400 });
+        }
+
+        const productRef = adminDb.collection("products").doc(productId);
         await productRef.update({ stock: update.stock });
 
-        return NextResponse.json({ message: `Stock for ${update.id} updated successfully.` }, { status: 200 });
+        return NextResponse.json({ message: `Stock for product ${productId} updated successfully.` }, { status: 200 });
 
     } catch (error: any) {
         console.error("Error in POST /api/stock:", error);
