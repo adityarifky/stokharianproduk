@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A conversational AI flow for Dreampuff stock management.
@@ -8,7 +9,7 @@ import {ai} from '@/ai/genkit';
 import {z} from 'zod';
 import {type MessageData} from 'genkit';
 import { adminDb } from '@/lib/firebase/server';
-import { FieldValue }s from 'firebase-admin/firestore';
+import { FieldValue } from 'firebase-admin/firestore';
 
 // Tool: Update Stock Quantity
 // This tool is executed by the AI when the user wants to change the stock quantity.
