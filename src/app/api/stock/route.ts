@@ -95,17 +95,32 @@ export async function POST(req: NextRequest) {
             const productsQuery = adminDb.collection("products");
             const productSnapshot = await productsQuery.get();
             const searchName = productName.toLowerCase().trim();
-            let found = false;
+            let foundDoc = null;
 
             for (const doc of productSnapshot.docs) {
-                if (doc.data().name.toLowerCase().trim() === searchName) {
-                    productId = doc.id;
-                    found = true;
-                    break;
+                const dbName = doc.data().name.toLowerCase().trim();
+                // Mencari kecocokan persis setelah normalisasi
+                if (dbName === searchName) {
+                    foundDoc = doc;
+                    break; 
                 }
             }
-            if (!found) {
-                return NextResponse.json({ message: `Product with name "${productName}" not found.` }, { status: 404 });
+
+            // Jika tidak ditemukan kecocokan persis, coba cari yang mengandung
+            if (!foundDoc) {
+                 for (const doc of productSnapshot.docs) {
+                    const dbName = doc.data().name.toLowerCase().trim();
+                    if (dbName.includes(searchName)) {
+                        foundDoc = doc;
+                        break;
+                    }
+                }
+            }
+            
+            if (foundDoc) {
+                productId = foundDoc.id;
+            } else {
+                return NextResponse.json({ message: `Product with name like "${productName}" not found.` }, { status: 404 });
             }
         }
 
