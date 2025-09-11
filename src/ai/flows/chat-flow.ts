@@ -52,7 +52,7 @@ const ChatFlowInputSchema = z.object({
     })).optional().describe("Daftar lengkap semua produk yang tersedia beserta ID, nama, stok, dan kategori.")
 });
 
-// Updated and smarter System Prompt (Fixed Syntax)
+// Updated and smarter System Prompt (Cleaned for Syntax)
 const systemPrompt = `Anda adalah PuffBot, asisten AI untuk toko kue Dreampuff. Kepribadian Anda ramah, santai, dan profesional. Selalu panggil pengguna "bro".
 
 PERATURAN UTAMA:

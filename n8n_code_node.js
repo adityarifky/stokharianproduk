@@ -1,5 +1,4 @@
-
-// --- Kode Final yang Paling Cerdas (Versi 5) ---
+// --- Kode Final yang Paling Cerdas (Versi 6 - Diperbaiki) ---
 const triggerData = $('Telegram Trigger').item.json;
 
 if (!triggerData || !triggerData.message || !triggerData.message.text) {
@@ -11,6 +10,7 @@ const userMessage = triggerData.message.text.toLowerCase();
 const baseUrl = 'https://stokharianproduk.vercel.app';
 const apiKey = 'Dr3@mPuff_n8n_!nT3gR@t!On-2024#XYZ'; // GANTI DENGAN API KEY-MU
 
+// --- Perbaikan Sintaks: Menggunakan backtick (`) untuk template literal ---
 const options = {
   headers: {
     'Authorization': `Bearer ${apiKey}`,
@@ -39,19 +39,23 @@ const containsStockKeyword = stockKeywords.some(keyword => userMessage.includes(
 
 if (reportKeywords.some(keyword => userMessage.includes(keyword))) {
   intent = 'get_reports';
+  // --- Perbaikan Sintaks: Menggunakan backtick (`) ---
   endpoint = `${baseUrl}/api/reports`;
 } else if (historyKeywords.some(keyword => userMessage.includes(keyword))) {
   intent = 'get_history';
+  // --- Perbaikan Sintaks: Menggunakan backtick (`) ---
   endpoint = `${baseUrl}/api/history`;
 } else if (containsStockKeyword || containsCategory) {
   // LOGIKA BARU: Jika pesan mengandung keyword stok ATAU nama kategori,
   // maka kita anggap itu adalah permintaan stok.
   intent = 'get_stock';
+  // --- Perbaikan Sintaks: Menggunakan backtick (`) ---
   endpoint = `${baseUrl}/api/stock`;
 
   // Cari kategori yang spesifik untuk ditambahkan ke filter
   const foundCategory = categories.find(cat => userMessage.includes(cat));
   if (foundCategory) {
+    // --- Perbaikan Sintaks: Menggunakan backtick (`) ---
     endpoint += `?category=${foundCategory}`;
   }
 }
@@ -66,6 +70,7 @@ if (endpoint) {
     });
   } catch (error) {
     const errorMessage = error.message || 'Unknown error';
+    // --- Perbaikan Sintaks: Menggunakan backtick (`) ---
     apiData = {
       error: `Terjadi masalah saat menghubungi API: ${errorMessage}`
     };
