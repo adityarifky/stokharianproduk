@@ -83,30 +83,30 @@ export async function POST(req: NextRequest) {
     try {
         const update: StockUpdate = await req.json();
         
-        if (typeof update.stock !== 'number') {
-             return NextResponse.json({ message: 'Bad Request: "stock" field is required and must be a number.' }, { status: 400 });
+        // Validasi input yang lebih ketat
+        if (typeof update.stock !== 'number' || (!update.id && !update.name)) {
+             return NextResponse.json({ message: 'Bad Request: "stock" field is required, and either "id" or "name" must be provided.' }, { status: 400 });
         }
 
         let productId: string | undefined = update.id;
-        let productName: string | undefined = update.name;
-
-        // Jika update berdasarkan NAMA, cari ID-nya dulu
-        if (productName) {
+        
+        // Jika update berdasarkan NAMA, cari ID-nya dulu dengan logika yang lebih andal
+        if (update.name && !productId) {
             const productsQuery = adminDb.collection("products");
             const productSnapshot = await productsQuery.get();
-            const searchName = productName.toLowerCase().trim();
+            const searchName = update.name.toLowerCase().trim();
             let foundDoc = null;
 
+            // Pencarian kecocokan persis (case-insensitive)
             for (const doc of productSnapshot.docs) {
                 const dbName = doc.data().name.toLowerCase().trim();
-                // Mencari kecocokan persis setelah normalisasi
                 if (dbName === searchName) {
                     foundDoc = doc;
                     break; 
                 }
             }
 
-            // Jika tidak ditemukan kecocokan persis, coba cari yang mengandung
+            // Jika tidak ada kecocokan persis, coba cari yang mengandung (case-insensitive)
             if (!foundDoc) {
                  for (const doc of productSnapshot.docs) {
                     const dbName = doc.data().name.toLowerCase().trim();
@@ -120,12 +120,12 @@ export async function POST(req: NextRequest) {
             if (foundDoc) {
                 productId = foundDoc.id;
             } else {
-                return NextResponse.json({ message: `Product with name like "${productName}" not found.` }, { status: 404 });
+                return NextResponse.json({ message: `Product with name like "${update.name}" not found.` }, { status: 404 });
             }
         }
 
         if (!productId) {
-            return NextResponse.json({ message: 'Bad Request: Either "id" or "name" is required to update stock.' }, { status: 400 });
+            return NextResponse.json({ message: 'Bad Request: Product ID could not be determined.' }, { status: 400 });
         }
 
         const productRef = adminDb.collection("products").doc(productId);
