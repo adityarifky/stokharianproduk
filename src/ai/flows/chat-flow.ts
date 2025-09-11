@@ -15,10 +15,10 @@ import { FieldValue } from 'firebase-admin/firestore';
 const updateStockTool = ai.defineTool(
   {
     name: 'updateStock',
-    description: "Gunakan tool ini HANYA untuk mengubah jumlah stok produk (menambah atau mengurangi). Contoh: 'tambah 5' -> amount: 5, 'laku 2' -> amount: -2.",
+    description: "Gunakan tool ini HANYA untuk mengubah jumlah stok produk (menambah atau mengurangi). Contoh: 'tambah 5' -> amount: 5, 'laku 2' -> amount: -2. ATAU untuk mengatur stok ke nilai absolut, contoh: 'stoknya jadi 5'. Jika user mengatur nilai absolut, hitung selisih dari stok saat ini.",
     inputSchema: z.object({
       productId: z.string().describe("ID unik dari produk yang akan diupdate. WAJIB pilih dari daftar produk yang tersedia."),
-      amount: z.number().int().describe("Jumlah yang akan ditambahkan (positif) atau dikurangkan (negatif)."),
+      amount: z.number().int().describe("Jumlah yang akan ditambahkan (positif) atau dikurangkan (negatif). Jika user mengatur stok ke nilai absolut (cth: 'stoknya jadi 10'), kamu WAJIB menghitung selisihnya (amount) dari stok saat ini."),
     }),
     outputSchema: z.object({
       success: z.boolean(),
@@ -60,7 +60,7 @@ const systemPrompt = `Anda adalah PuffBot, asisten AI untuk toko kue Dreampuff. 
 1.  **EKSEKUSI PERINTAH (PRIORITAS #1):** Jika pesan pengguna adalah perintah untuk mengubah data (contoh: "tambah stok", "laku 2", "stoknya jadi 5"), Anda WAJIB langsung memanggil `tool` yang sesuai. JANGAN bertanya untuk konfirmasi. Langsung eksekusi. Gunakan daftar produk di bawah sebagai referensi utama untuk mendapatkan `productId`. Jika produk tidak ditemukan, beri tahu user.
 2.  **JAWAB PERTANYAAN (PRIORITAS #2):** Jika bukan perintah, jawab pertanyaan pengguna berdasarkan histori percakapan dan daftar produk yang tersedia. Jika tidak ada daftar produk, minta maaf dan katakan ada masalah.
 3.  **BAHASA:** Selalu jawab dalam Bahasa Indonesia yang santai.
-4.  **PERHITUNGAN AMOUNT:** Jika user bilang "sisa 5" dan stok awal 12, maka `amount` adalah -7. Jika user bilang "stoknya jadi 10" dan stok awal 8, maka `amount` adalah 2.
+4.  **PERHITUNGAN AMOUNT:** Jika user bilang "sisa 5" dan stok awal 12, maka `amount` adalah -7. Jika user bilang "stoknya jadi 10" dan stok awal 8, maka `amount` adalah 2. Anda harus bisa menghitung selisih ini.
 
 ---
 Berikut adalah daftar produk yang tersedia saat ini. Gunakan ini sebagai sumber kebenaranmu.
@@ -85,16 +85,14 @@ const chatFlow = ai.defineFlow(
     
     const result = await ai.generate({
       system: systemPrompt,
-      prompt: { productList }, // Melewatkan daftar produk ke dalam prompt
+      prompt: `Berikut adalah daftar produk yang tersedia: ${JSON.stringify(productList)}`,
       messages: [...history],
       model: 'googleai/gemini-1.5-flash-preview',
       tools: [updateStockTool],
-      config: {
-        multiTurn: true, // Allow multi-turn conversations
-      },
+      toolChoice: 'auto',
     });
 
-    const output = result.output();
+    const output = result.output;
 
     if (!output) {
       return "Maaf, terjadi kesalahan dan aku tidak bisa memberikan jawaban, bro.";
@@ -111,7 +109,7 @@ const chatFlow = ai.defineFlow(
       // Lanjutkan percakapan dengan hasil dari tool untuk memberikan respons akhir
       const finalResult = await ai.generate({
           system: systemPrompt,
-          prompt: { productList },
+          prompt: `Berikut adalah daftar produk yang tersedia: ${JSON.stringify(productList)}`,
           messages: [...history, result.message, { role: 'tool', content: [toolResponse] }],
           model: 'googleai/gemini-1.5-flash-preview',
           tools: [updateStockTool],
