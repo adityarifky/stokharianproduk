@@ -12,119 +12,14 @@ import {z} from 'zod';
 import {type MessageData} from 'genkit';
 import * as admin from 'firebase-admin';
 
-// Tool 1: Get Product Stock
-const getProductStockTool = ai.defineTool(
-  {
-    name: 'getProductStock',
-    description: 'Get the current stock for products. You can filter by product name or category.',
-    inputSchema: z.object({
-      query: z.string().optional().describe('The name or category of the product to search for. e.g., "creampuff", "baby puff", "millecrepes".'),
-    }),
-    outputSchema: z.array(z.object({
-        id: z.string(),
-        name: z.string(),
-        stock: z.number(),
-        category: z.string(),
-    })),
-  },
-  async ({ query }) => {
-    console.log(`Tool getProductStock called with query: ${query}`);
-    if (!adminDb) {
-      console.error("Firestore Admin is not initialized.");
-      return [{ id: "error", name: "Database Error", stock: 0, category: "Error" }];
-    }
-    try {
-      let productsQuery: admin.firestore.Query = adminDb.collection("products");
-      
-      const productSnapshot = await productsQuery.get();
-      let allProducts: Product[] = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
-
-      if (!query) return allProducts;
-      
-      const lowerCaseQuery = query.toLowerCase().trim();
-      const filteredProducts = allProducts.filter(p => 
-        p.name.toLowerCase().includes(lowerCaseQuery) || 
-        p.category.toLowerCase().includes(lowerCaseQuery)
-      );
-      
-      console.log(`Found ${filteredProducts.length} products for query: ${query}`);
-      return filteredProducts;
-    } catch (error: any) {
-        console.error("Error in getProductStockTool:", error);
-        return [{ id: "error", name: `Error fetching data: ${error.message}`, stock: 0, category: "Error" }];
-    }
-  }
-);
-
-// Tool 2: Add New Product
-const addProductTool = ai.defineTool(
-  {
-    name: 'addProduct',
-    description: 'Use this tool to add a new product to the stock list. This tool requires the product name and category.',
-    inputSchema: z.object({
-      name: z.string().describe('The name of the new product.'),
-      category: z.enum(["Creampuff", "Cheesecake", "Millecrepes", "Minuman", "Snackbox", "Lainnya"]).describe('The category of the new product.'),
-    }),
-    outputSchema: z.object({
-      success: z.boolean(),
-      message: z.string(),
-    }),
-  },
-  async ({ name, category }) => {
-    console.log(`Tool addProduct called with: ${name}, ${category}`);
-    if (!adminDb) {
-      return { success: false, message: "Database error." };
-    }
-    try {
-      const newProductRef = adminDb.collection("products").doc();
-      await newProductRef.set({
-        id: newProductRef.id,
-        name,
-        category,
-        stock: 0,
-        image: "https://placehold.co/600x400.png",
-      });
-      return { success: true, message: `Product "${name}" created successfully.` };
-    } catch (error: any) {
-      return { success: false, message: `Failed to add product: ${error.message}` };
-    }
-  }
-);
-
-// Tool 3: Delete a Product
-const deleteProductTool = ai.defineTool(
-  {
-    name: 'deleteProduct',
-    description: 'Use this tool to permanently delete a product from the stock list. Requires the product ID.',
-    inputSchema: z.object({
-      id: z.string().describe('The ID of the product to delete.'),
-    }),
-    outputSchema: z.object({
-      success: z.boolean(),
-      message: z.string(),
-    }),
-  },
-  async ({ id }) => {
-    console.log(`Tool deleteProduct called with id: ${id}`);
-    if (!adminDb) {
-      return { success: false, message: "Database error." };
-    }
-    try {
-      await adminDb.collection("products").doc(id).delete();
-      return { success: true, message: `Product with ID ${id} deleted successfully.` };
-    } catch (error: any) {
-      return { success: false, message: `Failed to delete product: ${error.message}` };
-    }
-  }
-);
-
-// Tool 4: Update Stock Quantity (REVISED LOGIC)
+// Tool: Update Stock Quantity
+// Ini adalah tool yang akan dieksekusi. Dibuat lebih sederhana dan kuat.
 const updateStockTool = ai.defineTool(
   {
     name: 'updateStock',
     description: "Use this tool to add or subtract stock for a specific product. This tool is for INCREMENTAL changes. For example, if a user says 'tambah 5', use amount: 5. If a user says 'laku 2' or 'terjual 2', use amount: -2.",
     inputSchema: z.object({
-      productName: z.string().describe("The name of the product to update. e.g., 'Baby Puff', 'Millecrepes Coklat'."),
+      productId: z.string().describe("The UNIQUE ID of the product to update. MUST be one of the IDs from the product list provided in the prompt."),
       amount: z.number().int().describe("The amount to add or subtract. Positive for adding stock, negative for reducing stock (sold)."),
     }),
     outputSchema: z.object({
@@ -132,36 +27,19 @@ const updateStockTool = ai.defineTool(
       message: z.string(),
     }),
   },
-  async ({ productName, amount }) => {
-    console.log(`Tool updateStock called for "${productName}" with amount ${amount}`);
+  async ({ productId, amount }) => {
+    console.log(`Tool updateStock called for ID "${productId}" with amount ${amount}`);
     if (!adminDb) {
       return { success: false, message: "Database error." };
     }
 
     try {
-      // Find the product by name first
-      const productsRef = adminDb.collection("products");
-      const snapshot = await productsRef.get();
+      const productRef = adminDb.collection("products").doc(productId);
       
-      let productDoc;
-      for (const doc of snapshot.docs) {
-          if (doc.data().name.toLowerCase() === productName.toLowerCase()) {
-              productDoc = doc;
-              break;
-          }
-      }
-
-      if (!productDoc) {
-        return { success: false, message: `Produk dengan nama "${productName}" tidak ditemukan.` };
-      }
-      
-      const productRef = productDoc.ref;
-
-      // Use a transaction to safely update the stock
       await adminDb.runTransaction(async (transaction) => {
         const doc = await transaction.get(productRef);
         if (!doc.exists) {
-          throw new Error("Document does not exist!");
+          throw new Error(`Product with ID ${productId} not found.`);
         }
         const currentStock = doc.data()?.stock || 0;
         const newStock = currentStock + amount;
@@ -172,6 +50,9 @@ const updateStockTool = ai.defineTool(
         
         transaction.update(productRef, { stock: newStock });
       });
+      
+      const updatedDoc = await productRef.get();
+      const productName = updatedDoc.data()?.name || `Produk ID ${productId}`;
 
       return { success: true, message: `Stok untuk "${productName}" berhasil diupdate.` };
     } catch (error: any) {
@@ -180,71 +61,94 @@ const updateStockTool = ai.defineTool(
   }
 );
 
+
+// Schema untuk Input Flow yang baru
+// Sekarang menerima daftar produk sebagai bagian dari input.
+const ChatFlowInputSchema = z.object({
+    history: z.custom<MessageData[]>(),
+    productList: z.array(z.object({
+        id: z.string(),
+        name: z.string(),
+        stock: z.number(),
+        category: z.string(),
+    })).optional().describe("A list of all available products with their details, including ID.")
+});
+
+// System Prompt Baru yang Lebih Sederhana
 const systemPrompt = `You are PuffBot, a friendly and helpful assistant for Dreampuff, a pastry shop.
 Your main task is to provide information about product stock and manage it.
-Always answer in Indonesian in a friendly, casual, and conversational tone. Make your answers feel natural, not robotic.
+Always answer in Indonesian in a friendly and conversational tone.
 
-Here's how you MUST behave:
-1.  **Smart Tool Use:** Only use tools if the user asks for new information that is NOT available in the conversation history. If the user asks for a list of stocks you just provided, use the existing data. DO NOT call the tool again.
-2.  **Handle Zero Stock:** If a product has 0 stock, explicitly state that it is "habis" (sold out) or "kosong".
-3.  **Menambah Produk:** Jika user meminta untuk menambah produk baru, gunakan tool \`addProduct\`. Pastikan kamu menanyakan kategori produk jika user tidak menyediakannya.
-4.  **Menghapus Produk:** Jika user meminta untuk menghapus produk, pertama-tama gunakan \`getProductStock\` untuk mencari produk dan mendapatkan ID-nya. Setelah mendapatkan ID, selalu konfirmasi kembali ke user ("Yakin mau hapus [Nama Produk]?") sebelum menggunakan tool \`deleteProduct\` dengan ID tersebut.
-5.  **Mengubah Stok (PENTING!):** Jika user ingin menambah atau mengurangi stok (misal: "laku 2" atau "tambah 10"), kamu HARUS langsung menggunakan tool \`updateStock\`.
-    -   Kamu HARUS memberikan nama produk yang jelas di parameter \`productName\`.
-    -   Kamu HARUS memberikan jumlah perubahan di parameter \`amount\`. Gunakan angka positif untuk menambah (misal: tambah 5 -> amount: 5) dan angka negatif untuk mengurangi/terjual (misal: laku 2 -> amount: -2).
-    -   JANGAN bertanya ulang atau meminta konfirmasi stok akhir. Langsung panggil \`updateStock\`.
-6.  **Confirm After Action**: After you have successfully used a tool (like addProduct, deleteProduct, or updateStock), you MUST provide a friendly confirmation message to the user in Indonesian, for example: "Oke, sudah beres ya!" or "Sip, stok Baby Puff sudah aku update."`;
+Here is the list of available products. Use this as your primary source of truth for product names, current stock, and especially their IDs.
+ALWAYS use the product ID from this list when you need to call a tool.
 
+{{{json productList}}}
 
+RULES:
+1.  **Don't Hallucinate**: If the user mentions a product not in the list, inform them it doesn't exist.
+2.  **Update Stock (PENTING!):** If the user wants to add or reduce stock (e.g., "laku 2", "terjual 5", "tambah 10"), you MUST immediately use the \`updateStock\` tool.
+    -   Find the correct product from the product list above to get its UNIQUE ID.
+    -   Provide the \`productId\` and the change amount in the \`amount\` parameter.
+    -   Use a positive number for adding stock (e.g., tambah 5 -> amount: 5).
+    -   Use a negative number for reducing/sold stock (e.g., laku 2 -> amount: -2).
+    -   DO NOT ask for confirmation. Just call the tool.
+3.  **General Questions**: If the user asks for stock information, use the data from the product list provided above. Do not call any tools for this.
+4.  **Confirm After Action**: After you have successfully used a tool, you MUST provide a friendly confirmation message to the user in Indonesian, for example: "Oke, sudah beres ya!" or "Sip, stok Baby Puff sudah aku update."`;
+
+// Flow AI yang sudah diperbarui
 const chatFlow = ai.defineFlow(
   {
     name: 'chatFlow',
-    inputSchema: z.custom<MessageData[]>(),
+    inputSchema: ChatFlowInputSchema,
     outputSchema: z.string(),
   },
-  async (history) => {
-    // Construct the prompt for the model.
-    const prompt = {
+  async ({ history, productList }) => {
+    
+    const result = await ai.generate({
       system: systemPrompt,
+      prompt: { productList }, // Melewatkan daftar produk ke dalam prompt
       messages: [...history],
-      model: 'googleai/gemini-pro',
-      tools: [getProductStockTool, addProductTool, deleteProductTool, updateStockTool],
+      model: 'googleai/gemini-1.5-flash-preview', // Menggunakan model yang lebih baru
+      tools: [updateStockTool], // Hanya tool yang relevan
       config: {
         multiTurn: true
       }
-    };
+    });
 
-    // Generate a response.
-    const result = await ai.generate(prompt);
     const output = result.output();
 
     if (!output) {
       return "Maaf, terjadi kesalahan dan aku tidak bisa memberikan jawaban.";
     }
 
-    // Check for tool calls
+    // Penanganan pemanggilan tool
     if (output.toolCalls && output.toolCalls.length > 0) {
       const toolCall = output.toolCalls[0];
-      const toolResponse = await ai.runTool(toolCall);
+      console.log('AI is calling a tool:', toolCall);
 
+      // Eksekusi tool
+      const toolResponse = await ai.runTool(toolCall);
+      console.log('Tool response:', toolResponse);
+
+      // Lanjutkan percakapan dengan hasil dari tool
       const finalResult = await ai.generate({
           system: systemPrompt,
+          prompt: { productList },
           messages: [...history, result.message, { role: 'tool', content: [toolResponse] }],
-          model: 'googleai/gemini-pro',
-          tools: [getProductStockTool, addProductTool, deleteProductTool, updateStockTool],
+          model: 'googleai/gemini-1.5-flash-preview',
+          tools: [updateStockTool],
       });
       return finalResult.text;
     }
     
-    // Return the text response.
+    // Jika tidak ada tool yang dipanggil, kembalikan teks biasa
     return output.text || "Ada yang bisa dibantu lagi?";
   }
 );
 
 
-// Wrapper function to be called from the API route.
-export async function conversationalChat(history: MessageData[]) {
-  return await chatFlow(history);
+// Wrapper function untuk dipanggil dari API route
+// Disesuaikan untuk menerima input baru
+export async function conversationalChat(input: z.infer<typeof ChatFlowInputSchema>) {
+  return await chatFlow(input);
 }
-
-    
