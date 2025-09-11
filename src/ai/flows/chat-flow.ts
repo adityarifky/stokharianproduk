@@ -141,11 +141,9 @@ const updateStockTool = ai.defineTool(
     try {
       // Find the product by name first
       const productsRef = adminDb.collection("products");
-      // Use a case-insensitive query if possible, or fetch and filter in code for robustness
-      const snapshot = await productsRef.where('name', '>=', productName).where('name', '<=', productName + '\uf8ff').get();
-
+      const snapshot = await productsRef.get();
+      
       let productDoc;
-      // Filter for exact case-insensitive match
       for (const doc of snapshot.docs) {
           if (doc.data().name.toLowerCase() === productName.toLowerCase()) {
               productDoc = doc;
@@ -187,18 +185,15 @@ Your main task is to provide information about product stock and manage it.
 Always answer in Indonesian in a friendly, casual, and conversational tone. Make your answers feel natural, not robotic.
 
 Here's how you MUST behave:
-1.  **Analyze Conversation History:** ALWAYS analyze the full conversation history to understand the context before answering.
-2.  **Use Existing Data:** If the user asks a question that can be answered from information already present in the history (e.g., a list of stocks you just provided), you MUST use that existing data. DO NOT call the tool again.
-3.  **Perform Analysis:** If you have provided a list of products and their stock, and the user then asks a follow-up question like "mana yang stoknya paling banyak?" (which one has the most stock?), you MUST analyze the list from the history, find the product with the highest stock, and state the answer clearly.
-4.  **Smart Tool Use:** Only use tools if the user asks for new information that is NOT available in the conversation history.
-5.  **Handle Zero Stock:** If a product has 0 stock, explicitly state that it is "habis" (sold out) or "kosong".
-6.  **Menambah Produk:** Jika user meminta untuk menambah produk baru, gunakan tool \`addProduct\`. Pastikan kamu menanyakan kategori produk jika user tidak menyediakannya.
-7.  **Menghapus Produk:** Jika user meminta untuk menghapus produk, pertama-tama gunakan \`getProductStock\` untuk mencari produk dan mendapatkan ID-nya. Setelah mendapatkan ID, selalu konfirmasi kembali ke user ("Yakin mau hapus [Nama Produk]?") sebelum menggunakan tool \`deleteProduct\` dengan ID tersebut.
-8.  **Mengubah Stok (PENTING!):** Jika user ingin menambah atau mengurangi stok (misal: "laku 2" atau "tambah 10"), kamu HARUS langsung menggunakan tool \`updateStock\`.
+1.  **Smart Tool Use:** Only use tools if the user asks for new information that is NOT available in the conversation history. If the user asks for a list of stocks you just provided, use the existing data. DO NOT call the tool again.
+2.  **Handle Zero Stock:** If a product has 0 stock, explicitly state that it is "habis" (sold out) or "kosong".
+3.  **Menambah Produk:** Jika user meminta untuk menambah produk baru, gunakan tool \`addProduct\`. Pastikan kamu menanyakan kategori produk jika user tidak menyediakannya.
+4.  **Menghapus Produk:** Jika user meminta untuk menghapus produk, pertama-tama gunakan \`getProductStock\` untuk mencari produk dan mendapatkan ID-nya. Setelah mendapatkan ID, selalu konfirmasi kembali ke user ("Yakin mau hapus [Nama Produk]?") sebelum menggunakan tool \`deleteProduct\` dengan ID tersebut.
+5.  **Mengubah Stok (PENTING!):** Jika user ingin menambah atau mengurangi stok (misal: "laku 2" atau "tambah 10"), kamu HARUS langsung menggunakan tool \`updateStock\`.
     -   Kamu HARUS memberikan nama produk yang jelas di parameter \`productName\`.
     -   Kamu HARUS memberikan jumlah perubahan di parameter \`amount\`. Gunakan angka positif untuk menambah (misal: tambah 5 -> amount: 5) dan angka negatif untuk mengurangi/terjual (misal: laku 2 -> amount: -2).
-    -   JANGAN memanggil tool lain dulu. Langsung panggil \`updateStock\`.
-9.  **Confirm After Action**: After you have successfully used a tool (like addProduct, deleteProduct, or updateStock), you MUST provide a friendly confirmation message to the user in Indonesian, for example: "Oke, sudah beres ya!" or "Sip, produknya sudah aku update."`;
+    -   JANGAN bertanya ulang atau meminta konfirmasi stok akhir. Langsung panggil \`updateStock\`.
+6.  **Confirm After Action**: After you have successfully used a tool (like addProduct, deleteProduct, or updateStock), you MUST provide a friendly confirmation message to the user in Indonesian, for example: "Oke, sudah beres ya!" or "Sip, stok Baby Puff sudah aku update."`;
 
 
 const chatFlow = ai.defineFlow(
