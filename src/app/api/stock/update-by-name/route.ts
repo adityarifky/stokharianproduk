@@ -51,12 +51,12 @@ export async function POST(req: NextRequest) {
         
         let foundProduct: (Product & { id: string }) | null = null;
         // Normalisasi nama produk yang dicari ke huruf kecil
-        const searchName = update.name.toLowerCase();
+        const searchName = update.name.toLowerCase().trim();
 
         for (const doc of productSnapshot.docs) {
             const product = doc.data() as Product;
             // Bandingkan dengan nama produk di database yang juga dinormalisasi ke huruf kecil
-            if (product.name.toLowerCase() === searchName) {
+            if (product.name.toLowerCase().trim() === searchName) {
                 foundProduct = { id: doc.id, ...product };
                 break;
             }
