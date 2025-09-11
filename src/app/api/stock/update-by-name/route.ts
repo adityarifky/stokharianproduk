@@ -1,3 +1,4 @@
+
 'use server';
 
 import { NextResponse, type NextRequest } from "next/server";
@@ -44,14 +45,18 @@ export async function POST(req: NextRequest) {
             throw new Error("Invalid payload format. Expected { name: string, stock: number }.");
         }
 
-        // 4. Cari produk berdasarkan nama (case-insensitive)
+        // 4. Cari produk berdasarkan nama (case-insensitive) - INI PERBAIKANNYA
         const productsQuery = adminDb.collection("products");
         const productSnapshot = await productsQuery.get();
         
         let foundProduct: (Product & { id: string }) | null = null;
+        // Normalisasi nama produk yang dicari ke huruf kecil
+        const searchName = update.name.toLowerCase();
+
         for (const doc of productSnapshot.docs) {
             const product = doc.data() as Product;
-            if (product.name.toLowerCase() === update.name.toLowerCase()) {
+            // Bandingkan dengan nama produk di database yang juga dinormalisasi ke huruf kecil
+            if (product.name.toLowerCase() === searchName) {
                 foundProduct = { id: doc.id, ...product };
                 break;
             }
