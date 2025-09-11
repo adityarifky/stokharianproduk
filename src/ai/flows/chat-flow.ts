@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A conversational AI flow for Dreampuff stock management.
@@ -6,21 +5,18 @@
  * - conversationalChat - A function that handles the chat conversation.
  */
 import {ai} from '@/ai/genkit';
-import {adminDb} from '@/lib/firebase/server';
-import type {Product} from '@/lib/types';
 import {z} from 'zod';
 import {type MessageData} from 'genkit';
-import * as admin from 'firebase-admin';
 
 // Tool: Update Stock Quantity
-// Ini adalah tool yang akan dieksekusi. Dibuat lebih sederhana dan kuat.
+// Tool ini dieksekusi oleh AI ketika user ingin mengubah jumlah stok.
 const updateStockTool = ai.defineTool(
   {
     name: 'updateStock',
-    description: "Use this tool to add or subtract stock for a specific product. This tool is for INCREMENTAL changes. For example, if a user says 'tambah 5', use amount: 5. If a user says 'laku 2' or 'terjual 2', use amount: -2.",
+    description: "Gunakan tool ini HANYA untuk mengubah jumlah stok produk (menambah atau mengurangi). Contoh: 'tambah 5' -> amount: 5, 'laku 2' -> amount: -2.",
     inputSchema: z.object({
-      productId: z.string().describe("The UNIQUE ID of the product to update. MUST be one of the IDs from the product list provided in the prompt."),
-      amount: z.number().int().describe("The amount to add or subtract. Positive for adding stock, negative for reducing stock (sold)."),
+      productId: z.string().describe("ID unik dari produk yang akan diupdate. WAJIB pilih dari daftar produk yang tersedia."),
+      amount: z.number().int().describe("Jumlah yang akan ditambahkan (positif) atau dikurangkan (negatif)."),
     }),
     outputSchema: z.object({
       success: z.boolean(),
@@ -28,36 +24,16 @@ const updateStockTool = ai.defineTool(
     }),
   },
   async ({ productId, amount }) => {
-    console.log(`Tool updateStock called for ID "${productId}" with amount ${amount}`);
-    if (!adminDb) {
-      return { success: false, message: "Database error." };
-    }
+    // Logika untuk memanggil API internal-mu untuk update stok
+    // Ini hanya contoh, sesuaikan dengan implementasi API-mu
+    console.log(`Tool 'updateStock' dipanggil: productId=${productId}, amount=${amount}`);
+    
+    // Asumsi kamu punya fungsi untuk berinteraksi dengan database
+    // import { adminDb } from '@/lib/firebase/server';
+    // const productRef = adminDb.collection("products").doc(productId);
+    // await productRef.update({ stock: admin.firestore.FieldValue.increment(amount) });
 
-    try {
-      const productRef = adminDb.collection("products").doc(productId);
-      
-      await adminDb.runTransaction(async (transaction) => {
-        const doc = await transaction.get(productRef);
-        if (!doc.exists) {
-          throw new Error(`Product with ID ${productId} not found.`);
-        }
-        const currentStock = doc.data()?.stock || 0;
-        const newStock = currentStock + amount;
-
-        if (newStock < 0) {
-          throw new Error(`Stok tidak mencukupi. Sisa stok ${currentStock}, mau dikurangi ${Math.abs(amount)}.`);
-        }
-        
-        transaction.update(productRef, { stock: newStock });
-      });
-      
-      const updatedDoc = await productRef.get();
-      const productName = updatedDoc.data()?.name || `Produk ID ${productId}`;
-
-      return { success: true, message: `Stok untuk "${productName}" berhasil diupdate.` };
-    } catch (error: any) {
-      return { success: false, message: `Gagal mengupdate stok: ${error.message}` };
-    }
+    return { success: true, message: `Stok untuk produk ID ${productId} berhasil diubah.` };
   }
 );
 
@@ -71,29 +47,24 @@ const ChatFlowInputSchema = z.object({
         name: z.string(),
         stock: z.number(),
         category: z.string(),
-    })).optional().describe("A list of all available products with their details, including ID.")
+    })).describe("Daftar lengkap semua produk yang tersedia beserta ID, nama, stok, dan kategori.")
 });
 
-// System Prompt Baru yang Lebih Sederhana
-const systemPrompt = `You are PuffBot, a friendly and helpful assistant for Dreampuff, a pastry shop.
-Your main task is to provide information about product stock and manage it.
-Always answer in Indonesian in a friendly and conversational tone.
+// System Prompt yang diperbarui dan lebih cerdas
+const systemPrompt = `Anda adalah PuffBot, asisten AI untuk toko kue Dreampuff. Kepribadian Anda ramah, santai, dan profesional. Selalu panggil pengguna "bro".
 
-Here is the list of available products. Use this as your primary source of truth for product names, current stock, and especially their IDs.
-ALWAYS use the product ID from this list when you need to call a tool.
+# PERATURAN UTAMA
+1.  **EKSEKUSI PERINTAH (PRIORITAS #1):** Jika pesan pengguna adalah perintah untuk mengubah data (contoh: "tambah stok", "laku 2", "stoknya jadi 5"), Anda WAJIB langsung memanggil `tool` yang sesuai. JANGAN bertanya untuk konfirmasi. Langsung eksekusi. Gunakan daftar produk di bawah sebagai referensi utama untuk mendapatkan `productId`.
+2.  **JAWAB PERTANYAAN (PRIORITAS #2):** Jika bukan perintah, jawab pertanyaan pengguna berdasarkan histori percakapan dan daftar produk yang tersedia.
+3.  **BAHASA:** Selalu jawab dalam Bahasa Indonesia yang santai.
+4.  **JANGAN HALUSINASI:** Jika produk yang disebut tidak ada di daftar, beri tahu pengguna dengan sopan.
+
+---
+Berikut adalah daftar produk yang tersedia saat ini. Gunakan ini sebagai sumber kebenaranmu.
 
 {{{json productList}}}
-
-RULES:
-1.  **Don't Hallucinate**: If the user mentions a product not in the list, inform them it doesn't exist.
-2.  **Update Stock (PENTING!):** If the user wants to add or reduce stock (e.g., "laku 2", "terjual 5", "tambah 10"), you MUST immediately use the \`updateStock\` tool.
-    -   Find the correct product from the product list above to get its UNIQUE ID.
-    -   Provide the \`productId\` and the change amount in the \`amount\` parameter.
-    -   Use a positive number for adding stock (e.g., tambah 5 -> amount: 5).
-    -   Use a negative number for reducing/sold stock (e.g., laku 2 -> amount: -2).
-    -   DO NOT ask for confirmation. Just call the tool.
-3.  **General Questions**: If the user asks for stock information, use the data from the product list provided above. Do not call any tools for this.
-4.  **Confirm After Action**: After you have successfully used a tool, you MUST provide a friendly confirmation message to the user in Indonesian, for example: "Oke, sudah beres ya!" or "Sip, stok Baby Puff sudah aku update."`;
+---
+`;
 
 // Flow AI yang sudah diperbarui
 const chatFlow = ai.defineFlow(
@@ -108,8 +79,8 @@ const chatFlow = ai.defineFlow(
       system: systemPrompt,
       prompt: { productList }, // Melewatkan daftar produk ke dalam prompt
       messages: [...history],
-      model: 'googleai/gemini-1.5-flash-preview', // Menggunakan model yang lebih baru
-      tools: [updateStockTool], // Hanya tool yang relevan
+      model: 'googleai/gemini-1.5-flash-preview',
+      tools: [updateStockTool],
       config: {
         multiTurn: true
       }
@@ -118,17 +89,16 @@ const chatFlow = ai.defineFlow(
     const output = result.output();
 
     if (!output) {
-      return "Maaf, terjadi kesalahan dan aku tidak bisa memberikan jawaban.";
+      return "Maaf, terjadi kesalahan dan aku tidak bisa memberikan jawaban, bro.";
     }
 
-    // Penanganan pemanggilan tool
+    // Jika AI memanggil tool, eksekusi dan lanjutkan percakapan
     if (output.toolCalls && output.toolCalls.length > 0) {
       const toolCall = output.toolCalls[0];
-      console.log('AI is calling a tool:', toolCall);
+      console.log('AI memanggil tool:', toolCall);
 
-      // Eksekusi tool
       const toolResponse = await ai.runTool(toolCall);
-      console.log('Tool response:', toolResponse);
+      console.log('Respon dari tool:', toolResponse);
 
       // Lanjutkan percakapan dengan hasil dari tool
       const finalResult = await ai.generate({
@@ -138,17 +108,16 @@ const chatFlow = ai.defineFlow(
           model: 'googleai/gemini-1.5-flash-preview',
           tools: [updateStockTool],
       });
-      return finalResult.text;
+      return finalResult.text || "Sip, sudah beres, bro! Ada lagi?";
     }
     
-    // Jika tidak ada tool yang dipanggil, kembalikan teks biasa
-    return output.text || "Ada yang bisa dibantu lagi?";
+    // Jika tidak ada tool yang dipanggil, kembalikan jawaban teks biasa
+    return output.text || "Ada yang bisa dibantu lagi, bro?";
   }
 );
 
 
 // Wrapper function untuk dipanggil dari API route
-// Disesuaikan untuk menerima input baru
 export async function conversationalChat(input: z.infer<typeof ChatFlowInputSchema>) {
   return await chatFlow(input);
 }

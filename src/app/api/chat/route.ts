@@ -1,9 +1,29 @@
-
 import { NextRequest, NextResponse } from "next/server";
 import { type MessageData } from "genkit";
 import { conversationalChat } from "@/ai/flows/chat-flow";
+import { adminDb } from "@/lib/firebase/server";
+import type { Product } from "@/lib/types";
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+// Fungsi untuk mengambil semua produk dari Firestore
+async function getAllProducts(): Promise<Product[]> {
+  if (!adminDb) {
+    console.error("Firestore Admin is not initialized.");
+    return [];
+  }
+  try {
+    const productsSnapshot = await adminDb.collection("products").get();
+    if (productsSnapshot.empty) {
+      return [];
+    }
+    return productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+  } catch (error) {
+    console.error("Error fetching all products:", error);
+    return [];
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,21 +32,21 @@ export async function POST(req: NextRequest) {
 
     if (!history || !Array.isArray(history)) {
       return NextResponse.json(
-        {
-          error: "Invalid request body. 'history' must be an array of messages.",
-        },
+        { error: "Invalid request body. 'history' must be an array of messages." },
         { status: 400 }
       );
     }
     
-    // Call the actual conversational chat flow with the history.
-    const answer = await conversationalChat(history);
+    // 1. Ambil daftar produk terbaru dari Firestore
+    const productList = await getAllProducts();
+
+    // 2. Sertakan history dan productList saat memanggil flow AI
+    const answer = await conversationalChat({ history, productList });
 
     return NextResponse.json({ answer });
 
   } catch (error: any) {
     console.error("Error in /api/chat:", error);
-    // Provide a more detailed error message in the response for debugging
     return NextResponse.json(
       {
         error: "An internal server error occurred.",
