@@ -1,9 +1,12 @@
+// --- Versi Final yang Paling Lengkap & Cerdas (Versi 9 - Back to Basics) ---
 
-// --- Versi Final yang Paling Lengkap & Cerdas (Versi 6) ---
-const triggerData = $('Telegram Trigger').item.json;
+// Mengambil data input dari node sebelumnya. Ini cara yang paling standar dan andal.
+const triggerData = $input.item.json;
 
+// Pengecekan keamanan yang lebih sederhana dan fokus pada input saat ini.
 if (!triggerData || !triggerData.message || !triggerData.message.text) {
-  return [{ json: { error: 'Tidak dapat menemukan pesan dari Telegram Trigger.' } }];
+  // Jika input tidak valid, langsung kirim pesan error yang jelas.
+  return [{ json: { error: 'Waduh, bro! Maaf banget nih, kayaknya lagi ada masalah teknis, jadi aku nggak bisa nemuin pesan atau histori yang valid. Coba ulangi lagi ya!' } }];
 }
 
 const userMessage = triggerData.message.text.toLowerCase();
@@ -18,7 +21,6 @@ const options = {
 };
 
 let endpoint = '';
-let apiData = null;
 let intent = 'general_chat'; // Defaultnya selalu general chat
 
 // --- Kamus Keyword & Kategori yang Lebih Fleksibel ---
@@ -26,19 +28,16 @@ const categories = ["creampuff", "cheesecake", "millecrepes", "minuman", "snackb
 const stockKeywords = ['stok', 'stock', 'produk', 'sisa', 'ada apa', 'cek'];
 const historyKeywords = ['riwayat', 'history', 'masuk keluar', 'perbandingan', 'penambahan produk', 'aktivitas produk'];
 const reportKeywords = ['laporan', 'report', 'laporan harian'];
-
-// --- BAGIAN BARU: Keyword untuk Aksi/Perintah ---
 const actionKeywords = ['tambah', 'kurang', 'update', 'ubah', 'ganti', 'hapus', 'laku', 'terjual', 'buat', 'bikin', 'reset'];
 
-// --- Logika Penentuan Intent yang Baru dan Disempurnakan ---
+// --- Logika Penentuan Intent yang Sudah Terbukti Benar ---
 const containsCategory = categories.some(cat => userMessage.includes(cat));
 const containsStockKeyword = stockKeywords.some(keyword => userMessage.includes(keyword));
 const containsActionKeyword = actionKeywords.some(keyword => userMessage.includes(keyword));
 
 if (containsActionKeyword) {
-  // Jika ada kata kunci aksi, ini adalah perintah yang butuh 'tool'
   intent = 'action_required';
-  // Untuk 'action_required', kita butuh daftar semua produk agar AI tahu ID-nya.
+  // Untuk 'action_required', AI butuh daftar semua produk untuk mendapatkan ID.
   endpoint = `${baseUrl}/api/stock`; 
 } else if (reportKeywords.some(keyword => userMessage.includes(keyword))) {
   intent = 'get_reports';
@@ -47,11 +46,9 @@ if (containsActionKeyword) {
   intent = 'get_history';
   endpoint = `${baseUrl}/api/history`;
 } else if (containsStockKeyword || containsCategory) {
-  // Logika lama: Jika mengandung keyword stok ATAU nama kategori, ini permintaan info stok.
   intent = 'get_stock';
   endpoint = `${baseUrl}/api/stock`;
   
-  // Cari kategori yang spesifik untuk ditambahkan ke filter
   const foundCategory = categories.find(cat => userMessage.includes(cat));
   if (foundCategory) {
     endpoint += `?category=${foundCategory}`;
@@ -59,6 +56,7 @@ if (containsActionKeyword) {
 }
 // Jika tidak ada kondisi di atas yang terpenuhi, 'intent' akan tetap 'general_chat'.
 
+let apiData = null;
 if (endpoint) {
   try {
     apiData = await this.helpers.httpRequest({
@@ -72,22 +70,19 @@ if (endpoint) {
   }
 }
 
-// Untuk 'action_required', kita akan ganti nama 'apiData' menjadi 'productList' agar lebih jelas untuk AI.
-if (intent === 'action_required' && apiData) {
-    // Ubah nama field 'relevant_data' menjadi 'productList' untuk kejelasan di prompt AI
+// Logika if-else yang sudah benar untuk memastikan hanya satu format output yang dikirim.
+if (intent === 'action_required') {
     const output = {
         user_message: triggerData.message.text, 
         intent: intent,
         productList: apiData // AI akan menerima daftar produk lengkap dengan ID dan stok saat ini.
     };
     return [{ json: output }];
+} else {
+    const output = {
+      user_message: triggerData.message.text, 
+      intent: intent,
+      relevant_data: apiData
+    };
+    return [{ json: output }];
 }
-
-// Untuk intent lainnya, gunakan struktur output yang lama
-const output = {
-  user_message: triggerData.message.text, 
-  intent: intent,
-  relevant_data: apiData
-};
-
-return [{ json: output }];
