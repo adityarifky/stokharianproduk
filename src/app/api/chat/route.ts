@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60; 
 export const revalidate = 0;
 
-// Fungsi untuk mengambil semua produk dari Firestore
+// Function to fetch all products from Firestore
 async function getAllProducts(): Promise<Product[]> {
   if (!adminDb) {
     console.error("Firestore Admin is not initialized.");
@@ -32,17 +32,22 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const history: MessageData[] = body.history;
 
-    if (!history || !Array.isArray(history)) {
+    if (!history || !Array.isArray(history) || history.length === 0) {
       return NextResponse.json(
-        { error: "Invalid request body. 'history' must be an array of messages." },
+        { error: "Invalid request body. 'history' must be a non-empty array of messages." },
         { status: 400 }
       );
     }
     
-    // 1. Ambil daftar produk terbaru dari Firestore secara otomatis.
+    // 1. Automatically fetch the latest product list from Firestore.
     const productList = await getAllProducts();
 
-    // 2. Sertakan history dan productList saat memanggil flow AI.
+    if (productList.length === 0) {
+      // Return a specific error if no products are found, so the AI can respond appropriately.
+      console.warn("No products found in the database.");
+    }
+
+    // 2. Include history and productList when calling the AI flow.
     const answer = await conversationalChat({ history, productList });
 
     return NextResponse.json({ answer });

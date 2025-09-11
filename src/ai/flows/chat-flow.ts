@@ -11,7 +11,7 @@ import { adminDb } from '@/lib/firebase/server';
 import { FieldValue } from 'firebase-admin/firestore';
 
 // Tool: Update Stock Quantity
-// Tool ini dieksekusi oleh AI ketika user ingin mengubah jumlah stok.
+// This tool is executed by the AI when the user wants to change the stock quantity.
 const updateStockTool = ai.defineTool(
   {
     name: 'updateStock',
@@ -40,9 +40,8 @@ const updateStockTool = ai.defineTool(
   }
 );
 
-
-// Schema untuk Input Flow yang baru
-// Sekarang menerima daftar produk sebagai bagian dari input.
+// Schema for the new Flow Input
+// Now accepts a product list as part of the input.
 const ChatFlowInputSchema = z.object({
     history: z.custom<MessageData[]>(),
     productList: z.array(z.object({
@@ -53,13 +52,17 @@ const ChatFlowInputSchema = z.object({
     })).optional().describe("Daftar lengkap semua produk yang tersedia beserta ID, nama, stok, dan kategori.")
 });
 
-// System Prompt yang diperbarui dan lebih cerdas
+// Updated and smarter System Prompt (Fixed Syntax)
 const systemPrompt = `Anda adalah PuffBot, asisten AI untuk toko kue Dreampuff. Kepribadian Anda ramah, santai, dan profesional. Selalu panggil pengguna "bro".
 
-# PERATURAN UTAMA:
+PERATURAN UTAMA:
+
 1. EKSEKUSI PERINTAH (PRIORITAS #1): Jika pesan pengguna adalah perintah untuk mengubah data (contoh: "tambah stok", "laku 2", "stoknya jadi 5"), Anda WAJIB langsung memanggil 'tool' yang sesuai. JANGAN bertanya untuk konfirmasi. Langsung eksekusi. Gunakan daftar produk di bawah sebagai referensi utama untuk mendapatkan 'productId'. Jika produk tidak ditemukan, beri tahu user.
+
 2. JAWAB PERTANYAAN (PRIORITAS #2): Jika bukan perintah, jawab pertanyaan pengguna berdasarkan histori percakapan dan daftar produk yang tersedia. Jika tidak ada daftar produk, minta maaf dan katakan ada masalah.
+
 3. BAHASA: Selalu jawab dalam Bahasa Indonesia yang santai.
+
 4. PERHITUNGAN AMOUNT: Jika user bilang "sisa 5" dan stok awal 12, maka 'amount' adalah -7. Jika user bilang "stoknya jadi 10" dan stok awal 8, maka 'amount' adalah 2. Anda harus bisa menghitung selisih ini.
 
 ---
@@ -69,7 +72,7 @@ Berikut adalah daftar produk yang tersedia saat ini. Gunakan ini sebagai sumber 
 ---
 `;
 
-// Flow AI yang sudah diperbarui
+// Updated AI Flow
 const chatFlow = ai.defineFlow(
   {
     name: 'chatFlow',
@@ -98,7 +101,7 @@ const chatFlow = ai.defineFlow(
       return "Maaf, terjadi kesalahan dan aku tidak bisa memberikan jawaban, bro.";
     }
 
-    // Jika AI memanggil tool, eksekusi dan lanjutkan percakapan
+    // If the AI calls a tool, execute it and continue the conversation
     if (output.toolCalls && output.toolCalls.length > 0) {
       const toolCall = output.toolCalls[0];
       console.log('AI memanggil tool:', toolCall);
@@ -106,7 +109,7 @@ const chatFlow = ai.defineFlow(
       const toolResponse = await ai.runTool(toolCall);
       console.log('Respon dari tool:', toolResponse);
 
-      // Lanjutkan percakapan dengan hasil dari tool untuk memberikan respons akhir
+      // Continue the conversation with the tool's result to provide a final response
       const finalResult = await ai.generate({
           system: systemPrompt,
           prompt: `Berikut adalah daftar produk yang tersedia: ${JSON.stringify(productList)}`,
@@ -117,13 +120,13 @@ const chatFlow = ai.defineFlow(
       return finalResult.text || "Sip, sudah beres, bro! Ada lagi?";
     }
     
-    // Jika tidak ada tool yang dipanggil, kembalikan jawaban teks biasa
+    // If no tool is called, return the plain text response
     return output.text || "Ada yang bisa dibantu lagi, bro?";
   }
 );
 
 
-// Wrapper function untuk dipanggil dari API route
+// Wrapper function to be called from the API route
 export async function conversationalChat(input: z.infer<typeof ChatFlowInputSchema>) {
   return await chatFlow(input);
 }
