@@ -69,6 +69,7 @@ interface StockUpdate {
     id?: string;
     name?: string;
     stock?: number; // Nilai absolut (opsional)
+    change?: number; // Nilai perubahan (misal: +5 atau -2)
 }
 
 export async function POST(req: NextRequest) {
@@ -84,12 +85,14 @@ export async function POST(req: NextRequest) {
     try {
         const update: StockUpdate = await req.json();
         
-        if ((!update.id && !update.name) || typeof update.stock !== 'number') {
-             return NextResponse.json({ message: 'Bad Request: "id" or "name" is required, and "stock" (absolute value) must be provided.' }, { status: 400 });
+        // Validasi: Harus ada 'id' atau 'name', dan salah satu dari 'stock' atau 'change'
+        if ((!update.id && !update.name) || (typeof update.stock !== 'number' && typeof update.change !== 'number')) {
+             return NextResponse.json({ message: 'Bad Request: "id" or "name" is required, and either "stock" (absolute) or "change" (relative) must be provided.' }, { status: 400 });
         }
 
         let productId: string | undefined = update.id;
         
+        // Jika hanya nama yang diberikan, cari ID-nya
         if (update.name && !productId) {
             const productsQuery = adminDb.collection("products");
             const productSnapshot = await productsQuery.where("name", "==", update.name).limit(1).get();
@@ -107,7 +110,12 @@ export async function POST(req: NextRequest) {
 
         const productRef = adminDb.collection("products").doc(productId);
 
-        if (typeof update.stock === 'number') {
+        // Logika update: prioritaskan 'change' jika ada
+        if (typeof update.change === 'number') {
+            // Menggunakan FieldValue.increment untuk operasi atomik (lebih aman!)
+            await productRef.update({ stock: FieldValue.increment(update.change) });
+        } else if (typeof update.stock === 'number') {
+            // Fallback ke metode lama jika 'change' tidak ada
             await productRef.update({ stock: update.stock });
         }
 
