@@ -1,4 +1,5 @@
-// --- Kode Final yang Lebih Cerdas dan Cepat (Versi 8) ---
+
+// --- Kode Final yang Lebih Cerdas dan Cepat (Versi 9) ---
 const triggerData = $('Telegram Trigger').item.json;
 
 // Validasi input awal, jika tidak ada pesan, hentikan lebih awal.
