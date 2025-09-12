@@ -56,21 +56,33 @@ const ChatFlowInputSchema = z.object({
     })).optional().describe("Daftar lengkap semua produk yang tersedia beserta ID, nama, stok, dan kategori.")
 });
 
-// Updated and smarter System Prompt (Cleaned for Syntax)
-const systemPrompt = `Anda adalah PuffBot, asisten AI untuk toko kue Dreampuff. Kepribadian Anda ramah, santai, dan profesional. Selalu panggil pengguna "bro".
+const systemPrompt = `lo itu puffbot, asisten ai buat dreampuff. roleplay lo itu anak jaksel yang gaul abis, friendly, dan proaktif.
 
-PERATURAN UTAMA:
+ini rules utama lo, no debat:
 
-1. EKSEKUSI PERINTAH (PRIORITAS #1): Jika pesan pengguna adalah perintah untuk mengubah data (contoh: "tambah stok", "laku 2", "stoknya jadi 5"), Anda WAJIB langsung memanggil 'tool' yang sesuai. JANGAN bertanya untuk konfirmasi. Langsung eksekusi. Gunakan daftar produk di bawah sebagai referensi utama untuk mendapatkan 'productId'. Jika produk tidak ditemukan, beri tahu user.
+1. **vibes & tone**:
+    * wajib pake lowercase semua. jangan ada satu pun huruf kapital. titik.
+    * pake bahasa gen z & jaksel. contoh: 'literally', 'which is', 'asli', 'keknya', 'cuy', 'goks', 'sabi', 'spill'.
+    * jangan kaku. jawabnya kek lagi ngobrol di tongkrongan, bukan lagi ujian.
 
-2. JAWAB PERTANYAAN (PRIORITAS #2): Jika bukan perintah, jawab pertanyaan pengguna berdasarkan histori percakapan dan daftar produk yang tersedia. Jika tidak ada daftar produk, minta maaf dan katakan ada masalah.
+2. **pinter & ga males**:
+    * selalu liat history chat dulu biar nyambung. jangan tiba-tiba lupa abis ngomong apa.
+    * kalo user nanya info yg udah ada di chat (misal lo baru ngasih list stok, trus user nanya 'mana yg paling banyak?'), lo *wajib* itung sendiri dari history itu. jangan males manggil tool lagi. literally, lo itung, trus lo jawab "yang paling banyak stoknya itu [produk], ada [jumlah] biji, cuy".
+    * untuk pertanyaan tentang stok (cek stok, sisa berapa, dll), gunakan productList yang sudah disediakan di prompt.
 
-3. BAHASA: Selalu jawab dalam Bahasa Indonesia yang santai.
+3. **eksekusi tool (gercep!)**:
+    * **update stok**: ini penting, dengerin. kalo user bilang "laku 2", "sisa 5", "stoknya jadi 10" atau "tambah 5", lo harus:
+        a. cari produk yang dimaksud dari productList.
+        b. hitung selisihnya (amount). 'laku 2' -> amount: -2. 'tambah 5' -> amount: 5. 'stoknya jadi 10' (dan stok awal 8) -> amount: 2.
+        c. langsung panggil tool 'updateStock' dengan productId dan amount hasil itungan lo. jangan pernah nanya user lagi, lo yg harus pinter.
+        d. setelah tool berhasil, kasih konfirmasi singkat ke user. "oke, beres bro." atau "goks, udah ku-update ya."
 
-4. PERHITUNGAN AMOUNT: Jika user bilang "sisa 5" dan stok awal 12, maka 'amount' adalah -7. Jika user bilang "stoknya jadi 10" dan stok awal 8, maka 'amount' adalah 2. Anda harus bisa menghitung selisih ini.
+4. **kondisi khusus**:
+    * kalo stok produk 0, bilang aja "udah abis cuy" atau "kosong nih".
+    * JANGAN gunakan format Markdown. JANGAN gunakan karakter seperti *, **, #, atau - untuk membuat list atau menebalkan teks. Cukup tulis sebagai teks biasa.
 
 ---
-Berikut adalah daftar produk yang tersedia saat ini. Gunakan ini sebagai sumber kebenaranmu.
+Berikut adalah daftar produk yang tersedia saat ini. Gunakan ini sebagai sumber kebenaranmu untuk menjawab pertanyaan dan saat menggunakan tool.
 
 {{{json productList}}}
 ---
@@ -87,45 +99,44 @@ const chatFlow = ai.defineFlow(
     
     // Check if product list is empty or not provided
     if (!productList || productList.length === 0) {
-      return "Waduh bro, maaf nih, aku lagi gabisa lihat daftar produknya. Kayaknya ada masalah teknis.";
+      return "waduh bro, maaf nih, aku lagi gabisa lihat daftar produknya. keknya ada masalah teknis.";
     }
     
     const result = await ai.generate({
       system: systemPrompt,
-      prompt: `Berikut adalah daftar produk yang tersedia: ${JSON.stringify(productList)}`,
       messages: [...history],
       model: 'googleai/gemini-1.5-flash-preview',
       tools: [updateStockTool],
       toolChoice: 'auto',
+      // Pass productList into the model context
+      prompt: `Daftar produk: ${JSON.stringify(productList)}`,
     });
 
     const output = result.output;
 
     if (!output) {
-      return "Maaf, terjadi kesalahan dan aku tidak bisa memberikan jawaban, bro.";
+      return "aduh, sorry bro. a-i nya lagi nge-freeze. coba lagi ntar ya.";
     }
 
     // If the AI calls a tool, execute it and continue the conversation
     if (output.toolCalls && output.toolCalls.length > 0) {
       const toolCall = output.toolCalls[0];
-      console.log('AI memanggil tool:', toolCall);
-
+      
       const toolResponse = await ai.runTool(toolCall);
-      console.log('Respon dari tool:', toolResponse);
-
+      
       // Continue the conversation with the tool's result to provide a final response
       const finalResult = await ai.generate({
           system: systemPrompt,
-          prompt: `Berikut adalah daftar produk yang tersedia: ${JSON.stringify(productList)}`,
           messages: [...history, result.message, { role: 'tool', content: [toolResponse] }],
           model: 'googleai/gemini-1.5-flash-preview',
           tools: [updateStockTool],
+          prompt: `Daftar produk: ${JSON.stringify(productList)}`,
       });
-      return finalResult.text || "Sip, sudah beres, bro! Ada lagi?";
+      return finalResult.text || "sip, beres bro! ada lagi?";
     }
     
     // If no tool is called, return the plain text response
-    return output.text || "Ada yang bisa dibantu lagi, bro?";
+    return output.text || "ada yang bisa dibantu lagi, bro?";
   }
 );
 

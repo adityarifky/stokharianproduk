@@ -17,7 +17,7 @@ async function getAllProducts(): Promise<Product[]> {
     return [];
   }
   try {
-    const productsSnapshot = await adminDb.collection("products").get();
+    const productsSnapshot = await adminDb.collection("products").orderBy("name").get();
     if (productsSnapshot.empty) {
       return [];
     }

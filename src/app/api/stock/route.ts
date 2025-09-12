@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
         const nameQuery = searchParams.get('name')?.toLowerCase().trim();
         const categoryQuery = searchParams.get('category')?.toLowerCase().trim();
         
-        const productsQuery = adminDb.collection("products");
+        const productsQuery = adminDb.collection("products").orderBy("name");
         const productSnapshot = await productsQuery.get();
         
         let allProducts: Product[] = productSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
@@ -69,7 +69,6 @@ interface StockUpdate {
     id?: string;
     name?: string;
     stock?: number; // Nilai absolut (opsional)
-    change?: number; // Nilai perubahan (misal: -2 atau +5)
 }
 
 export async function POST(req: NextRequest) {
@@ -85,9 +84,8 @@ export async function POST(req: NextRequest) {
     try {
         const update: StockUpdate = await req.json();
         
-        // Validasi input: harus ada 'id' atau 'name', dan 'stock' atau 'change'
-        if ((!update.id && !update.name) || (typeof update.stock !== 'number' && typeof update.change !== 'number')) {
-             return NextResponse.json({ message: 'Bad Request: "id" or "name" is required, and either "stock" (absolute) or "change" (relative) must be provided.' }, { status: 400 });
+        if ((!update.id && !update.name) || typeof update.stock !== 'number') {
+             return NextResponse.json({ message: 'Bad Request: "id" or "name" is required, and "stock" (absolute value) must be provided.' }, { status: 400 });
         }
 
         let productId: string | undefined = update.id;
@@ -109,11 +107,7 @@ export async function POST(req: NextRequest) {
 
         const productRef = adminDb.collection("products").doc(productId);
 
-        if (typeof update.change === 'number') {
-            // Gunakan FieldValue.increment untuk operasi atomik
-            await productRef.update({ stock: FieldValue.increment(update.change) });
-        } else if (typeof update.stock === 'number') {
-            // Atur ke nilai absolut jika 'stock' yang diberikan
+        if (typeof update.stock === 'number') {
             await productRef.update({ stock: update.stock });
         }
 
