@@ -1,4 +1,4 @@
-// --- Kode Final yang Lebih Cerdas dan Cepat (Versi 7) ---
+// --- Kode Final yang Lebih Cerdas dan Cepat (Versi 8) ---
 const triggerData = $('Telegram Trigger').item.json;
 
 // Validasi input awal, jika tidak ada pesan, hentikan lebih awal.
@@ -40,7 +40,8 @@ if (reportKeywords.some(keyword => userMessage.includes(keyword))) {
   intent = 'get_stock';
   endpoint = `${baseUrl}/api/stock`;
   
-  // Cari kategori spesifik jika ada, untuk memfilter hasil
+  // Cari kategori spesifik jika ada, untuk memfilter hasil.
+  // Ini memastikan bahwa jika user menyebut "millecrepes", kita hanya akan mengirimkan data millecrepes.
   const foundCategory = categories.find(cat => userMessage.includes(cat));
   if (foundCategory) {
     endpoint += `?category=${foundCategory}`;
