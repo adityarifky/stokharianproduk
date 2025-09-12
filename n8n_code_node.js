@@ -1,16 +1,15 @@
-// --- Kode Final yang Paling Cerdas (Versi 6 - Diperbaiki) ---
+// --- Kode Final yang Lebih Cerdas dan Cepat (Versi 7) ---
 const triggerData = $('Telegram Trigger').item.json;
 
+// Validasi input awal, jika tidak ada pesan, hentikan lebih awal.
 if (!triggerData || !triggerData.message || !triggerData.message.text) {
-  return [{ json: { error: 'Tidak dapat menemukan pesan dari Telegram Trigger.' } }];
+  return [{ json: { error: 'Tidak dapat menemukan teks pesan dari Telegram Trigger.' } }];
 }
 
 const userMessage = triggerData.message.text.toLowerCase();
-
 const baseUrl = 'https://stokharianproduk.vercel.app';
 const apiKey = 'Dr3@mPuff_n8n_!nT3gR@t!On-2024#XYZ'; // GANTI DENGAN API KEY-MU
 
-// --- Perbaikan Sintaks: Menggunakan backtick (`) untuk template literal ---
 const options = {
   headers: {
     'Authorization': `Bearer ${apiKey}`,
@@ -19,48 +18,39 @@ const options = {
 
 let endpoint = '';
 let apiData = null;
-let intent = 'general_chat'; // Defaultnya selalu general chat
+let intent = 'general_chat'; // Default intent
 
-// --- Kamus Keyword & Kategori yang Lebih Fleksibel ---
+// --- Definisi Keyword yang Jelas ---
+const stockKeywords = ['stok', 'stock', 'produk', 'sisa', 'ada apa', 'cek', 'punya apa'];
+const reportKeywords = ['laporan', 'report', 'laporan harian'];
+const historyKeywords = ['riwayat', 'history', 'masuk keluar', 'aktivitas'];
 const categories = ["creampuff", "cheesecake", "millecrepes", "minuman", "snackbox", "lainnya"];
 
-// Keyword Stok: Dibuat lebih luas
-const stockKeywords = ['stok', 'stock', 'produk', 'sisa', 'ada apa', 'cek'];
+// --- Logika Penentuan Intent yang Lebih Cepat dan Efisien ---
 
-// Keyword Riwayat: Tetap spesifik
-const historyKeywords = ['riwayat', 'history', 'masuk keluar', 'perbandingan', 'penambahan produk', 'aktivitas produk'];
-
-// Keyword Laporan: Tetap spesifik
-const reportKeywords = ['laporan', 'report', 'laporan harian'];
-
-// --- Logika Penentuan Intent yang Baru ---
-const containsCategory = categories.some(cat => userMessage.includes(cat));
-const containsStockKeyword = stockKeywords.some(keyword => userMessage.includes(keyword));
-
+// Cek intent yang paling spesifik terlebih dahulu
 if (reportKeywords.some(keyword => userMessage.includes(keyword))) {
   intent = 'get_reports';
-  // --- Perbaikan Sintaks: Menggunakan backtick (`) ---
   endpoint = `${baseUrl}/api/reports`;
 } else if (historyKeywords.some(keyword => userMessage.includes(keyword))) {
   intent = 'get_history';
-  // --- Perbaikan Sintaks: Menggunakan backtick (`) ---
   endpoint = `${baseUrl}/api/history`;
-} else if (containsStockKeyword || containsCategory) {
-  // LOGIKA BARU: Jika pesan mengandung keyword stok ATAU nama kategori,
-  // maka kita anggap itu adalah permintaan stok.
+} else if (stockKeywords.some(keyword => userMessage.includes(keyword)) || categories.some(cat => userMessage.includes(cat))) {
+  // Jika ini adalah permintaan stok, set intent dan bangun endpoint
   intent = 'get_stock';
-  // --- Perbaikan Sintaks: Menggunakan backtick (`) ---
   endpoint = `${baseUrl}/api/stock`;
-
-  // Cari kategori yang spesifik untuk ditambahkan ke filter
+  
+  // Cari kategori spesifik jika ada, untuk memfilter hasil
   const foundCategory = categories.find(cat => userMessage.includes(cat));
   if (foundCategory) {
-    // --- Perbaikan Sintaks: Menggunakan backtick (`) ---
     endpoint += `?category=${foundCategory}`;
   }
 }
-// Jika tidak ada kondisi di atas yang terpenuhi, 'intent' akan tetap 'general_chat'.
+// Jika tidak ada keyword yang cocok, intent akan tetap 'general_chat' dan tidak ada panggilan API yang dilakukan.
 
+// --- Panggilan API Hanya Jika Diperlukan ---
+// Panggilan ke API hanya terjadi jika salah satu dari intent di atas terdeteksi dan endpoint di-set.
+// Untuk 'general_chat', blok ini akan dilewati, membuat respons jauh lebih cepat.
 if (endpoint) {
   try {
     apiData = await this.helpers.httpRequest({
@@ -69,18 +59,18 @@ if (endpoint) {
       json: true
     });
   } catch (error) {
-    const errorMessage = error.message || 'Unknown error';
-    // --- Perbaikan Sintaks: Menggunakan backtick (`) ---
+    // Tangani error jika API gagal dihubungi
     apiData = {
-      error: `Terjadi masalah saat menghubungi API: ${errorMessage}`
+      error: `Terjadi masalah saat menghubungi API: ${error.message || 'Unknown error'}`
     };
   }
 }
 
+// --- Siapkan Output untuk Node Berikutnya (AI Agent) ---
 const output = {
   user_message: triggerData.message.text,
   intent: intent,
-  relevant_data: apiData
+  relevant_data: apiData // Ini akan null jika tidak ada panggilan API, dan itu tidak apa-apa
 };
 
 return [{ json: output }];
