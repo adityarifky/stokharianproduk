@@ -1,4 +1,5 @@
 
+
 // --- Kode Final yang Lebih Cerdas dan Cepat (Versi 9) ---
 const triggerData = $('Telegram Trigger').item.json;
 
