@@ -2,6 +2,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { adminDb } from "@/lib/firebase/server";
 import type { Product } from "@/lib/types";
+import { FieldValue } from "firebase-admin/firestore";
 
 // --- PENTING: Menonaktifkan Caching di Vercel ---
 // Baris ini memberitahu Vercel untuk tidak menyimpan cache dari respons API ini.
@@ -67,7 +68,8 @@ export async function GET(req: NextRequest) {
 interface StockUpdate {
     id?: string;
     name?: string;
-    stock: number;
+    stock?: number; // Nilai absolut (opsional)
+    change?: number; // Nilai perubahan (misal: -2 atau +5)
 }
 
 export async function POST(req: NextRequest) {
@@ -83,44 +85,21 @@ export async function POST(req: NextRequest) {
     try {
         const update: StockUpdate = await req.json();
         
-        // Validasi input yang lebih ketat
-        if (typeof update.stock !== 'number' || (!update.id && !update.name)) {
-             return NextResponse.json({ message: 'Bad Request: "stock" field is required, and either "id" or "name" must be provided.' }, { status: 400 });
+        // Validasi input: harus ada 'id' atau 'name', dan 'stock' atau 'change'
+        if ((!update.id && !update.name) || (typeof update.stock !== 'number' && typeof update.change !== 'number')) {
+             return NextResponse.json({ message: 'Bad Request: "id" or "name" is required, and either "stock" (absolute) or "change" (relative) must be provided.' }, { status: 400 });
         }
 
         let productId: string | undefined = update.id;
         
-        // Jika update berdasarkan NAMA, cari ID-nya dulu dengan logika yang lebih andal
         if (update.name && !productId) {
             const productsQuery = adminDb.collection("products");
-            const productSnapshot = await productsQuery.get();
-            const searchName = update.name.toLowerCase().trim();
-            let foundDoc = null;
-
-            // Pencarian kecocokan persis (case-insensitive)
-            for (const doc of productSnapshot.docs) {
-                const dbName = doc.data().name.toLowerCase().trim();
-                if (dbName === searchName) {
-                    foundDoc = doc;
-                    break; 
-                }
-            }
-
-            // Jika tidak ada kecocokan persis, coba cari yang mengandung (case-insensitive)
-            if (!foundDoc) {
-                 for (const doc of productSnapshot.docs) {
-                    const dbName = doc.data().name.toLowerCase().trim();
-                    if (dbName.includes(searchName)) {
-                        foundDoc = doc;
-                        break;
-                    }
-                }
-            }
+            const productSnapshot = await productsQuery.where("name", "==", update.name).limit(1).get();
             
-            if (foundDoc) {
-                productId = foundDoc.id;
+            if (!productSnapshot.empty) {
+                productId = productSnapshot.docs[0].id;
             } else {
-                return NextResponse.json({ message: `Product with name like "${update.name}" not found.` }, { status: 404 });
+                return NextResponse.json({ message: `Product with name "${update.name}" not found.` }, { status: 404 });
             }
         }
 
@@ -129,7 +108,14 @@ export async function POST(req: NextRequest) {
         }
 
         const productRef = adminDb.collection("products").doc(productId);
-        await productRef.update({ stock: update.stock });
+
+        if (typeof update.change === 'number') {
+            // Gunakan FieldValue.increment untuk operasi atomik
+            await productRef.update({ stock: FieldValue.increment(update.change) });
+        } else if (typeof update.stock === 'number') {
+            // Atur ke nilai absolut jika 'stock' yang diberikan
+            await productRef.update({ stock: update.stock });
+        }
 
         return NextResponse.json({ message: `Stock for product ${productId} updated successfully.` }, { status: 200 });
 

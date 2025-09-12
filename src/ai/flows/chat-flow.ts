@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A conversational AI flow for Dreampuff stock management.
@@ -15,7 +16,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 const updateStockTool = ai.defineTool(
   {
     name: 'updateStock',
-    description: "Gunakan tool ini HANYA untuk mengubah jumlah stok produk (menambah atau mengurangi). Contoh: 'tambah 5' -> amount: 5, 'laku 2' -> amount: -2. ATAU untuk mengatur stok ke nilai absolut, contoh: 'stoknya jadi 5'. Jika user mengatur nilai absolut, hitung selisih dari stok saat ini.",
+    description: "Gunakan tool ini HANYA untuk mengubah jumlah stok produk (menambah atau mengurangi). Contoh: 'tambah 5 puff' -> amount: 5, 'laku 2 crepes' -> amount: -2. Jika user mengatur stok ke nilai absolut (cth: 'stoknya jadi 10'), kamu WAJIB menghitung selisihnya (amount) dari stok saat ini.",
     inputSchema: z.object({
       productId: z.string().describe("ID unik dari produk yang akan diupdate. WAJIB pilih dari daftar produk yang tersedia."),
       amount: z.number().int().describe("Jumlah yang akan ditambahkan (positif) atau dikurangkan (negatif). Jika user mengatur stok ke nilai absolut (cth: 'stoknya jadi 10'), kamu WAJIB menghitung selisihnya (amount) dari stok saat ini."),
@@ -31,7 +32,10 @@ const updateStockTool = ai.defineTool(
     }
     try {
       const productRef = adminDb.collection("products").doc(productId);
+      
+      // Perform an atomic update using FieldValue.increment
       await productRef.update({ stock: FieldValue.increment(amount) });
+      
       return { success: true, message: `Stok untuk produk ID ${productId} berhasil diubah.` };
     } catch (error) {
       console.error(`Tool 'updateStock' gagal:`, error);
