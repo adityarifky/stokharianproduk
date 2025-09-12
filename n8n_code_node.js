@@ -69,11 +69,25 @@ if (endpoint) {
   }
 }
 
-// --- Siapkan Output untuk Node Berikutnya (AI Agent) ---
+// --- PERUBAHAN DIMULAI DI SINI: Bersihkan data sebelum dikirim ke AI ---
+
+// Buat salinan data yang aman untuk dimodifikasi
+let relevantDataForAI = apiData ? JSON.parse(JSON.stringify(apiData)) : null;
+
+// Jika datanya adalah array (daftar produk), loop dan hapus field 'image'
+if (Array.isArray(relevantDataForAI)) {
+  relevantDataForAI.forEach(item => {
+    if (item && typeof item === 'object') {
+      delete item.image; // Hapus data gambar
+    }
+  });
+}
+
+// --- Siapkan Output untuk Node Berikutnya (AI Agent) dengan data yang sudah bersih ---
 const output = {
   user_message: triggerData.message.text,
   intent: intent,
-  relevant_data: apiData // Ini akan null jika tidak ada panggilan API, dan itu tidak apa-apa
+  relevant_data: relevantDataForAI // Ini data yang sudah ringan tanpa gambar
 };
 
 return [{ json: output }];
