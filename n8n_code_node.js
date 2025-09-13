@@ -7,8 +7,9 @@ let productId = null;
 let amount = null;
 let naturalResponse = "oke, beres bro!"; // Default fallback
 
-// Pola regex untuk menemukan blok tool_code
-const toolCodeRegex = /calling tool_code print\(updateStock\((.*?)\)\)/s;
+// --- PERBAIKAN DI SINI ---
+// Regex dibuat lebih fleksibel untuk menangani spasi atau baris baru (\s+)
+const toolCodeRegex = /calling\s+tool_code\s+print\(updateStock\((.*?)\)\)/s;
 const toolCodeMatch = rawOutput.match(toolCodeRegex);
 
 if (toolCodeMatch) {
@@ -17,7 +18,7 @@ if (toolCodeMatch) {
   
   // 1. Ekstrak productId dan amount HANYA dari dalam argumen tool
   // Pola yang lebih fleksibel untuk menangani tanda kutip tunggal atau ganda
-  const productIdMatch = toolArgs.match(/productName='([^']+)'|productName="([^"]+)"/);
+  const productIdMatch = toolArgs.match(/productId='([^']+)'|productId="([^"]+)"/);
   const amountMatch = toolArgs.match(/amount=([-\d]+)/);
   
   // Ambil hasil yang cocok (entah dari kutip tunggal atau ganda)
