@@ -71,6 +71,10 @@ interface StockUpdate {
     name?: string;
     stock?: number; // Nilai absolut (opsional)
     change?: number; // Nilai perubahan (misal: +5 atau -2)
+    session?: { // Info sesi dari bot, opsional
+      name: string;
+      position: string;
+    }
 }
 
 export async function POST(req: NextRequest) {
@@ -132,7 +136,8 @@ export async function POST(req: NextRequest) {
         batch.update(productRef, { stock: newStock });
 
         // 2. Buat catatan riwayat berdasarkan jenis perubahan
-        const sessionInfo = { name: "Bot Telegram", position: "Sistem" }; // Info sesi default untuk bot
+        // Gunakan info sesi dari body jika ada, jika tidak, gunakan default
+        const sessionInfo = update.session || { name: "Bot Telegram", position: "Sistem" }; 
 
         if (stockChange > 0) { // Penambahan Stok
             const historyRef = adminDb.collection("stock_history").doc();
@@ -251,3 +256,6 @@ export async function DELETE(req: NextRequest) {
         return NextResponse.json({ message: `Internal Server Error: ${error.message}` }, { status: 500 });
     }
 }
+
+
+    
