@@ -1,64 +1,48 @@
 
-// DREAMPAD V.12 - Respon Natural AI & Pengambilan Sesi Otomatis
-// VERSI PERBAIKAN FINAL - Menggunakan referensi node eksplisit
-
+// DREAMPAD V.13 - Perbaikan Logika Ekstraksi Total
 // =========================================================================
 // PENJELASAN PERUBAHAN
 // =========================================================================
-// Bro, ini adalah versi yang sudah diperbaiki total.
-// MASALAHNYA: Kode sebelumnya mencoba mengambil data dari 'Telegram Trigger'
-// dengan cara yang tidak bisa dilakukan dari dalam node ini.
+// Bro, ini adalah perbaikan total berdasarkan screenshot-mu.
+// MASALAHNYA: Logika sebelumnya gagal memisahkan antara perintah tool_code
+// dan kalimat balasan natural dari AI, menyebabkan data yang diekstrak salah.
 //
-// SOLUSINYA: Kita akan secara EKSPLISIT memberitahu n8n untuk melihat
-// kembali ke node 'Telegram Trigger' menggunakan sintaks `$('...').item`.
-// Ini adalah cara yang paling anti-error.
+// SOLUSINYA: Kita akan menggunakan Regex (Regular Expressions) yang lebih
+// canggih untuk secara spesifik menargetkan dan mengekstrak setiap bagian
+// yang kita butuhkan dari string output AI. Ini adalah cara yang paling andal.
 // =========================================================================
 
-
-// Mengambil output dari node sebelumnya (node 'If')
-// $input.item.json.output adalah cara yang benar untuk input langsung
+// Mengambil output mentah dari node 'If'
 const rawOutput = $input.item.json.output;
 
-// MENGAMBIL DATA LANGSUNG DARI SUMBERNYA SECARA EKSPLISIT
-// Ini adalah kunci perbaikannya. Kita panggil langsung node 'Telegram Trigger'.
-const triggerData = $('Telegram Trigger').item.json;
+// 1. Ekstrak HANYA perintah `tool_code` yang pertama.
+// Ini penting untuk mencegah kebingungan jika AI menghasilkan banyak perintah.
+const toolCodeMatch = rawOutput.match(/print\(updateStock\(.*?\)\)/);
+const toolCode = toolCodeMatch ? toolCodeMatch[0] : '';
 
-// --- Validasi Input Penting ---
-// Pemeriksaan ini penting untuk mencegah error jika ada data yang kosong.
-if (!rawOutput || !triggerData || !triggerData.message) {
-  // Jika ada yang salah, kita hentikan dan beri pesan error yang jelas.
-  throw new Error('Tidak dapat menemukan output dari AI atau data dari Telegram Trigger.');
-}
-
-// 1. Ekstrak productId dan amount dari `tool_code`
-const productIdMatch = rawOutput.match(/productId='([^']+)'/);
-const amountMatch = rawOutput.match(/amount=([-\d.]+)/); // Ditingkatkan untuk desimal & negatif
+// 2. Dari dalam `toolCode` itu, ekstrak productId dan amount.
+const productIdMatch = toolCode.match(/productId='([^']+)'/);
+const amountMatch = toolCode.match(/amount=([-\d.]+)/);
 
 const productId = productIdMatch ? productIdMatch[1] : null;
 const amount = amountMatch ? parseFloat(amountMatch[1]) : null;
 
-// 2. Ekstrak KALIMAT KONFIRMASI NATURAL dari AI
-// PERBAIKAN DI SINI: Mengambil teks SETELAH tag penutup tool_code. Ini lebih andal.
-const naturalResponse = rawOutput.split('))').pop().trim();
+// 3. Ekstrak KALIMAT KONFIRMASI NATURAL dari AI.
+// Logika ini membuang semua bagian `tool_code` dan hanya menyisakan kalimat bersih.
+const naturalResponse = rawOutput
+  .replace(/calling tool_code/g, '')
+  .replace(/print\(updateStock\(.*?\)\)/g, '')
+  .replace(/\\n/g, ' ') // Ganti newline dengan spasi
+  .replace(/\s+/g, ' ') // Hapus spasi berlebih
+  .trim();
 
-// 3. Ambil informasi user (nama & posisi) secara OTOMATIS dari Telegram
-const userName = triggerData.message.from.first_name || "User Telegram";
-const userPosition = "Staf"; // Posisi default, bisa diubah jika perlu
-
-// 4. Siapkan output JSON yang lengkap untuk node-node selanjutnya
+// 4. Siapkan output JSON yang lengkap dan bersih.
+// Kita tidak lagi butuh referensi ke Telegram Trigger di sini.
 const output = {
-    // Data untuk node HTTP Request (mengupdate stok)
     productId: productId,
     amount: amount,
-    session: {
-        name: userName,
-        position: userPosition
-    },
-    
-    // Data untuk node "Send a text message" (mengirim balasan ke user)
-    natural_response: naturalResponse || "oke, beres bro!" // Fallback jika AI lupa bikin kalimat
+    natural_response: naturalResponse || "oke, beres bro!" // Fallback jika AI lupa
 };
 
-// Kirim data yang sudah diekstrak ini ke node selanjutnya.
-// Ini adalah format return yang benar di n8n.
+// 5. Kirim data yang sudah diekstrak ini ke node selanjutnya.
 return [{ json: output }];
