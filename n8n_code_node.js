@@ -1,93 +1,52 @@
+// DREAMPAD V.10 - Arsitektur Terpusat (Disarankan)
+
+// =========================================================================
+// PENJELASAN ARSITEKTUR BARU
+// =========================================================================
+// Bro, workflow ini sekarang jadi super simpel. Semua logika "otak"-nya
+// (mendeteksi maksud, bertanya nama, memanggil tool, menjawab) sudah 
+// dipindahkan ke dalam kode aplikasi Next.js kita di file:
+// -> src/ai/flows/chat-flow.ts
+// -> src/app/api/chat/route.ts
+//
+// Workflow N8N ini sekarang hanya bertugas sebagai "KURIR" atau "JEMBATAN"
+// antara Telegram dan API aplikasi kita.
+//
+// ALUR KERJA:
+// 1. Telegram Trigger: Menerima pesan dari user.
+// 2. Code (Node ini): Mengambil teks pesan dari user.
+// 3. HTTP Request: Mengirim pesan user ke endpoint /api/chat di aplikasi kita.
+// 4. Send a text message: Mengambil jawaban FINAL dari API dan mengirimnya ke user.
+//
+// Ini adalah praktik terbaik karena membuat semuanya terpusat, lebih mudah 
+// di-debug, dan jauh lebih powerful.
+// =========================================================================
 
 
-// --- Kode Final yang Lebih Cerdas dan Cepat (Versi 9) ---
+// Mengambil data dari Telegram Trigger.
 const triggerData = $('Telegram Trigger').item.json;
 
-// Validasi input awal, jika tidak ada pesan, hentikan lebih awal.
+// Validasi input awal.
 if (!triggerData || !triggerData.message || !triggerData.message.text) {
+  // Jika tidak ada pesan, kita hentikan di sini.
+  // Sebaiknya, tambahkan node "NoOp" (Do Nothing) setelah ini untuk error handling.
   return [{ json: { error: 'Tidak dapat menemukan teks pesan dari Telegram Trigger.' } }];
 }
 
-const userMessage = triggerData.message.text.toLowerCase();
-const baseUrl = 'https://stokharianproduk.vercel.app';
-const apiKey = 'Dr3@mPuff_n8n_!nT3gR@t!On-2024#XYZ'; // GANTI DENGAN API KEY-MU
+// Hanya mengambil history chat terakhir dari user.
+// Aplikasi kita sekarang yang akan mengelola history lengkap.
+const latestUserMessage = triggerData.message.text;
 
-const options = {
-  headers: {
-    'Authorization': `Bearer ${apiKey}`,
-  },
-};
-
-let endpoint = '';
-let apiData = null;
-let intent = 'general_chat'; // Default intent
-
-// --- Definisi Keyword yang Jelas ---
-const stockKeywords = ['stok', 'stock', 'produk', 'sisa', 'ada apa', 'cek', 'punya apa'];
-const reportKeywords = ['laporan', 'report', 'laporan harian'];
-const historyKeywords = ['riwayat', 'history', 'masuk keluar', 'aktivitas'];
-const categories = ["creampuff", "cheesecake", "millecrepes", "minuman", "snackbox", "lainnya"];
-
-// --- Logika Penentuan Intent yang Lebih Cepat dan Efisien ---
-
-// Cek intent yang paling spesifik terlebih dahulu
-if (reportKeywords.some(keyword => userMessage.includes(keyword))) {
-  intent = 'get_reports';
-  endpoint = `${baseUrl}/api/reports`;
-} else if (historyKeywords.some(keyword => userMessage.includes(keyword))) {
-  intent = 'get_history';
-  endpoint = `${baseUrl}/api/history`;
-} else if (stockKeywords.some(keyword => userMessage.includes(keyword)) || categories.some(cat => userMessage.includes(cat))) {
-  // Jika ini adalah permintaan stok, set intent dan bangun endpoint
-  intent = 'get_stock';
-  endpoint = `${baseUrl}/api/stock`;
-  
-  // Cari kategori spesifik jika ada, untuk memfilter hasil.
-  // Ini memastikan bahwa jika user menyebut "millecrepes", kita hanya akan mengirimkan data millecrepes.
-  const foundCategory = categories.find(cat => userMessage.includes(cat));
-  if (foundCategory) {
-    endpoint += `?category=${foundCategory}`;
-  }
-}
-// Jika tidak ada keyword yang cocok, intent akan tetap 'general_chat' dan tidak ada panggilan API yang dilakukan.
-
-// --- Panggilan API Hanya Jika Diperlukan ---
-// Panggilan ke API hanya terjadi jika salah satu dari intent di atas terdeteksi dan endpoint di-set.
-// Untuk 'general_chat', blok ini akan dilewati, membuat respons jauh lebih cepat.
-if (endpoint) {
-  try {
-    apiData = await this.helpers.httpRequest({
-      url: endpoint,
-      headers: options.headers,
-      json: true
-    });
-  } catch (error) {
-    // Tangani error jika API gagal dihubungi
-    apiData = {
-      error: `Terjadi masalah saat menghubungi API: ${error.message || 'Unknown error'}`
-    };
-  }
-}
-
-// --- PERUBAHAN DIMULAI DI SINI: Bersihkan data sebelum dikirim ke AI ---
-
-// Buat salinan data yang aman untuk dimodifikasi
-let relevantDataForAI = apiData ? JSON.parse(JSON.stringify(apiData)) : null;
-
-// Jika datanya adalah array (daftar produk), loop dan hapus field 'image'
-if (Array.isArray(relevantDataForAI)) {
-  relevantDataForAI.forEach(item => {
-    if (item && typeof item === 'object') {
-      delete item.image; // Hapus data gambar
-    }
-  });
-}
-
-// --- Siapkan Output untuk Node Berikutnya (AI Agent) dengan data yang sudah bersih ---
+// Siapkan output untuk dikirim ke node HTTP Request berikutnya.
+// Strukturnya harus cocok dengan yang diharapkan oleh endpoint /api/chat.
 const output = {
-  user_message: triggerData.message.text,
-  intent: intent,
-  relevant_data: relevantDataForAI // Ini data yang sudah ringan tanpa gambar
+  history: [
+    {
+      role: "user",
+      content: [{ text: latestUserMessage }]
+    }
+  ]
 };
 
+// Kirim data ini ke node selanjutnya.
 return [{ json: output }];
