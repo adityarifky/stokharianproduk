@@ -141,7 +141,9 @@ export async function POST(req: NextRequest) {
 
         batch.update(productRef, { stock: newStock });
 
-        const sessionInfo = update.session || { name: "Bot Telegram", position: "Sistem" }; 
+        const sessionInfo = (update.session && update.session.name && update.session.position) 
+          ? { name: update.session.name, position: update.session.position }
+          : { name: "Bot Telegram", position: "Sistem" };
 
         if (stockChange > 0) {
             const historyRef = adminDb.collection("stock_history").doc();
