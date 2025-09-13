@@ -141,6 +141,8 @@ export async function POST(req: NextRequest) {
 
         batch.update(productRef, { stock: newStock });
 
+        // --- PERBAIKAN DI SINI ---
+        // Logika diperkuat untuk memastikan session dari bot digunakan jika ada.
         const sessionInfo = (update.session && update.session.name && update.session.position) 
           ? { name: update.session.name, position: update.session.position }
           : { name: "Bot Telegram", position: "Sistem" };
