@@ -12,7 +12,6 @@ const toolCodeRegex = /calling tool_code print\(updateStock\((.*?)\)\)/s;
 const toolCodeMatch = rawOutput.match(toolCodeRegex);
 
 if (toolCodeMatch) {
-  // toolCodeMatch[0] adalah seluruh blok tool_code, cth: "calling tool_code print(updateStock(...))"
   // toolCodeMatch[1] adalah bagian dalam kurung updateStock, cth: "productId='xyz', amount=-1"
   const toolArgs = toolCodeMatch[1];
   
@@ -44,7 +43,7 @@ if (toolCodeMatch) {
 // 3. Kembalikan semuanya dalam satu output JSON yang rapi
 return {
   json: {
-    // Data untuk node selanjutnya
+    // Data untuk node selanjutnya (HTTP Request)
     productId: productId,
     amount: amount,
     
