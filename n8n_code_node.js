@@ -1,54 +1,64 @@
 
-// Mengambil output mentah dari AI Agent
+// Mengambil data dari input
 const rawOutput = $input.item.json.output;
+const triggerMessage = $('Telegram Trigger').first().json.message.text;
+// --- BARU: Ambil daftar produk asli dari node sebelumnya ---
+const productList = $('Get All Products').all().map(item => item.json);
 
-// Variabel untuk menampung hasil ekstraksi
+// Variabel untuk menampung hasil
 let productId = null;
+let productName = null; // Untuk pencarian
 let amount = null;
-let naturalResponse = "oke, beres bro!"; // Default fallback
+let naturalResponse = "oke, beres bro!";
+let sessionName = null;
+let sessionPosition = null;
 
-// --- PERBAIKAN DI SINI ---
-// Regex dibuat lebih fleksibel untuk menangani spasi atau baris baru (\s+)
+// Regex untuk mencari tool_code
 const toolCodeRegex = /calling\s+tool_code\s+print\(updateStock\((.*?)\)\)/s;
 const toolCodeMatch = rawOutput.match(toolCodeRegex);
 
 if (toolCodeMatch) {
-  // toolCodeMatch[1] adalah bagian dalam kurung updateStock, cth: "productId='xyz', amount=-1"
+  // Ambil nama & posisi dari trigger message
+  const parts = triggerMessage.trim().split(/\s+/);
+  if (parts.length > 0) {
+    sessionName = parts[0]; 
+    sessionPosition = parts.slice(1).join(' ') || 'User';
+  }
+
+  // Ekstrak argumen dari tool_code
   const toolArgs = toolCodeMatch[1];
-  
-  // 1. Ekstrak productId dan amount HANYA dari dalam argumen tool
-  // Pola yang lebih fleksibel untuk menangani tanda kutip tunggal atau ganda
-  const productIdMatch = toolArgs.match(/productId='([^']+)'|productId="([^"]+)"/);
   const amountMatch = toolArgs.match(/amount=([-\d]+)/);
+  if (amountMatch) amount = parseInt(amountMatch[1], 10);
   
-  // Ambil hasil yang cocok (entah dari kutip tunggal atau ganda)
-  if (productIdMatch) {
-    productId = productIdMatch[1] || productIdMatch[2];
-  }
-  if (amountMatch) {
-    amount = parseInt(amountMatch[1], 10);
-  }
-  
-  // 2. Ekstrak kalimat konfirmasi natural dari AI secara andal
-  // Ambil semua teks SETELAH blok tool_code yang kita temukan
+  // Ambil respon natural dari AI
   const responseText = rawOutput.substring(rawOutput.indexOf(toolCodeMatch[0]) + toolCodeMatch[0].length).trim();
-  if (responseText) {
-    naturalResponse = responseText;
+  if (responseText) naturalResponse = responseText;
+
+  // --- LOGIKA BARU & PALING PENTING ---
+  // Ekstrak NAMA produk dari kalimat natural AI
+  // Kita cari nama produk yang ada di productList di dalam kalimat AI
+  for (const product of productList) {
+    if (naturalResponse.toLowerCase().includes(product.name.toLowerCase())) {
+      productName = product.name; // Dapet namanya
+      productId = product.id;     // Dapet ID aslinya!
+      break; 
+    }
   }
+  
 } else {
-  // Jika tidak ada tool_code, berarti ini hanya obrolan biasa
-  // Ambil seluruh output sebagai natural_response
   naturalResponse = rawOutput.trim();
 }
 
-// 3. Kembalikan semuanya dalam satu output JSON yang rapi
+// Kembalikan semuanya, ID asli dan nama produk untuk fallback
 return {
   json: {
-    // Data untuk node selanjutnya (HTTP Request)
-    productId: productId,
+    productId: productId, // Sekarang ini ID yang BENAR
+    name: productName,    // Tambahkan nama untuk dikirim ke API
     amount: amount,
-    
-    // Kalimat konfirmasi yang akan dikirim ke user di akhir
-    natural_response: naturalResponse
+    natural_response: naturalResponse,
+    session: {
+      name: sessionName,
+      position: sessionPosition
+    }
   }
 };

@@ -95,23 +95,27 @@ export async function POST(req: NextRequest) {
         
         // --- UPGRADE: Logika input yang fleksibel ---
         const productId = update.productId || update.id;
+        const productName = update.name;
         const amount = update.amount ?? update.change; // Gunakan amount, fallback ke change
         const stock = update.stock;
         const naturalResponse = update.natural_response;
 
         // Validasi: Harus ada 'productId' atau 'name', dan 'amount' atau 'stock'
-        if ((!productId && !update.name) || (typeof stock !== 'number' && typeof amount !== 'number')) {
+        if ((!productId && !productName) || (typeof stock !== 'number' && typeof amount !== 'number')) {
              return NextResponse.json({ message: 'Bad Request: "productId" or "name" is required, and either "stock" (absolute) or "amount" (relative) must be provided.' }, { status: 400 });
         }
 
         let finalProductId: string | undefined = productId;
         
-        if (update.name && !finalProductId) {
-            const productSnapshot = await adminDb.collection("products").where("name", "==", update.name).limit(1).get();
+        // --- LOGIKA BARU ---
+        // Jika ID tidak ada tapi nama ada, cari produk berdasarkan nama
+        if (!finalProductId && productName) {
+            const productQuery = adminDb.collection("products").where("name", "==", productName).limit(1);
+            const productSnapshot = await productQuery.get();
             if (!productSnapshot.empty) {
                 finalProductId = productSnapshot.docs[0].id;
             } else {
-                return NextResponse.json({ message: `Product with name "${update.name}" not found.` }, { status: 404 });
+                return NextResponse.json({ message: `Product with name "${productName}" not found.` }, { status: 404 });
             }
         }
 
