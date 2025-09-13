@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
                 timestamp: FieldValue.serverTimestamp(),
                 session: sessionInfo,
                 product: {
-                    id: productData.id,
+                    id: finalProductId,
                     name: productData.name,
                     image: productData.image,
                 },
@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
         } else if (stockChange < 0) {
             const historyRef = adminDb.collection("sales_history").doc();
             const saleItem: SaleHistoryItem = {
-                productId: productData.id,
+                productId: finalProductId, // <-- PERBAIKAN DI SINI
                 productName: productData.name,
                 quantity: Math.abs(stockChange),
                 image: productData.image
@@ -257,5 +257,7 @@ export async function DELETE(req: NextRequest) {
         return NextResponse.json({ message: `Internal Server Error: ${error.message}` }, { status: 500 });
     }
 }
+
+    
 
     
