@@ -73,6 +73,7 @@ interface StockUpdate {
     stock?: number; // Nilai absolut
     amount?: number; // Nilai perubahan (relatif)
     change?: number; // Alias untuk amount dari n8n
+    natural_response?: string; // Menangkap respon natural dari AI
     session?: {
       name: string;
       position: string;
@@ -96,6 +97,7 @@ export async function POST(req: NextRequest) {
         const productId = update.productId || update.id;
         const amount = update.amount ?? update.change; // Gunakan amount, fallback ke change
         const stock = update.stock;
+        const naturalResponse = update.natural_response;
 
         // Validasi: Harus ada 'productId' atau 'name', dan 'amount' atau 'stock'
         if ((!productId && !update.name) || (typeof stock !== 'number' && typeof amount !== 'number')) {
@@ -174,7 +176,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ 
             status: "success", 
-            message: `Stock for ${productData.name} updated to ${newStock}.`,
+            message: naturalResponse || `Stock for ${productData.name} updated to ${newStock}.`,
             productName: productData.name,
             newStock: newStock,
         }, { status: 200 });
