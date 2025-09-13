@@ -172,7 +172,12 @@ export async function POST(req: NextRequest) {
 
         await batch.commit();
 
-        return NextResponse.json({ message: `Stock for product ${finalProductId} updated successfully and history recorded.` }, { status: 200 });
+        return NextResponse.json({ 
+            status: "success", 
+            message: `Stock for ${productData.name} updated to ${newStock}.`,
+            productName: productData.name,
+            newStock: newStock,
+        }, { status: 200 });
 
     } catch (error: any) {
         console.error("Error in POST /api/stock:", error);
@@ -257,7 +262,3 @@ export async function DELETE(req: NextRequest) {
         return NextResponse.json({ message: `Internal Server Error: ${error.message}` }, { status: 500 });
     }
 }
-
-    
-
-    
