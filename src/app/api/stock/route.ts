@@ -1,8 +1,8 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { adminDb } from "@/lib/firebase/server";
-import type { Product } from "@/lib/types";
-import { FieldValue } from "firebase-admin/firestore";
+import type { Product, SaleHistoryItem } from "@/lib/types";
+import { FieldValue, writeBatch } from "firebase-admin/firestore";
 
 // --- PENTING: Menonaktifkan Caching di Vercel ---
 // Baris ini memberitahu Vercel untuk tidak menyimpan cache dari respons API ini.
@@ -10,6 +10,7 @@ import { FieldValue } from "firebase-admin/firestore";
 export const revalidate = 0;
 
 const authenticateRequest = (req: NextRequest) => {
+    // Diperbarui: Mengambil API Key dari environment variables
     const serverApiKey = process.env.N8N_API_KEY;
     if (!serverApiKey) {
         console.error("Authentication failed: N8N_API_KEY environment variable is not set.");
@@ -94,9 +95,7 @@ export async function POST(req: NextRequest) {
         
         // Jika hanya nama yang diberikan, cari ID-nya
         if (update.name && !productId) {
-            const productsQuery = adminDb.collection("products");
-            const productSnapshot = await productsQuery.where("name", "==", update.name).limit(1).get();
-            
+            const productSnapshot = await adminDb.collection("products").where("name", "==", update.name).limit(1).get();
             if (!productSnapshot.empty) {
                 productId = productSnapshot.docs[0].id;
             } else {
@@ -109,17 +108,65 @@ export async function POST(req: NextRequest) {
         }
 
         const productRef = adminDb.collection("products").doc(productId);
+        const productDoc = await productRef.get();
+        if (!productDoc.exists) {
+            return NextResponse.json({ message: `Product with ID "${productId}" not found.` }, { status: 404 });
+        }
+        const productData = productDoc.data() as Product;
 
-        // Logika update: prioritaskan 'change' jika ada
+        let stockChange = 0;
+        let newStock = 0;
+
         if (typeof update.change === 'number') {
-            // Menggunakan FieldValue.increment untuk operasi atomik (lebih aman!)
-            await productRef.update({ stock: FieldValue.increment(update.change) });
+            stockChange = update.change;
+            newStock = productData.stock + stockChange;
         } else if (typeof update.stock === 'number') {
-            // Fallback ke metode lama jika 'change' tidak ada
-            await productRef.update({ stock: update.stock });
+            stockChange = update.stock - productData.stock;
+            newStock = update.stock;
         }
 
-        return NextResponse.json({ message: `Stock for product ${productId} updated successfully.` }, { status: 200 });
+        // Mulai batch write untuk operasi atomik
+        const batch = adminDb.batch();
+
+        // 1. Update stok produk
+        batch.update(productRef, { stock: newStock });
+
+        // 2. Buat catatan riwayat berdasarkan jenis perubahan
+        const sessionInfo = { name: "Bot Telegram", position: "Sistem" }; // Info sesi default untuk bot
+
+        if (stockChange > 0) { // Penambahan Stok
+            const historyRef = adminDb.collection("stock_history").doc();
+            batch.set(historyRef, {
+                timestamp: FieldValue.serverTimestamp(),
+                session: sessionInfo,
+                product: {
+                    id: productData.id,
+                    name: productData.name,
+                    image: productData.image,
+                },
+                quantityAdded: stockChange,
+                stockAfter: newStock,
+            });
+        } else if (stockChange < 0) { // Pengurangan Stok (Penjualan)
+            const historyRef = adminDb.collection("sales_history").doc();
+            const saleItem: SaleHistoryItem = {
+                productId: productData.id,
+                productName: productData.name,
+                quantity: Math.abs(stockChange),
+                image: productData.image
+            };
+            batch.set(historyRef, {
+                timestamp: FieldValue.serverTimestamp(),
+                session: sessionInfo,
+                items: [saleItem],
+                totalItems: Math.abs(stockChange),
+            });
+        }
+
+        // Commit semua operasi sekaligus
+        await batch.commit();
+
+        return NextResponse.json({ message: `Stock for product ${productId} updated successfully and history recorded.` }, { status: 200 });
 
     } catch (error: any) {
         console.error("Error in POST /api/stock:", error);
