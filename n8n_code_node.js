@@ -38,9 +38,10 @@ if (!rawOutput || !triggerData || !triggerData.message) {
 
 // 1. Ekstrak productId dan amount dari `tool_code`
 const productIdMatch = rawOutput.match(/productId='([^']+)'/);
-const amountMatch = rawOutput.match(/amount=([-\d.]+)/); // Ditingkatkan untuk desimal
+const amountMatch = rawOutput.match(/amount=([-\d.]+)/); // Ditingkatkan untuk desimal dan negatif
 
 const productId = productIdMatch ? productIdMatch[1] : null;
+// Diubah untuk menangani angka desimal dan negatif dengan benar
 const amount = amountMatch ? parseFloat(amountMatch[1]) : null;
 
 // 2. Ekstrak KALIMAT KONFIRMASI NATURAL dari AI

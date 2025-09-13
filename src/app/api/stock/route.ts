@@ -67,11 +67,11 @@ export async function GET(req: NextRequest) {
 }
 
 interface StockUpdate {
-    id?: string;
+    productId?: string;
     name?: string;
     stock?: number; // Nilai absolut (opsional)
-    change?: number; // Nilai perubahan (misal: +5 atau -2)
-    session?: { // Info sesi dari bot, opsional
+    amount?: number; // Nilai perubahan (misal: +5 atau -2)
+    session?: { // Info sesi dari bot, WAJIB untuk pencatatan
       name: string;
       position: string;
     }
@@ -90,12 +90,12 @@ export async function POST(req: NextRequest) {
     try {
         const update: StockUpdate = await req.json();
         
-        // Validasi: Harus ada 'id' atau 'name', dan salah satu dari 'stock' atau 'change'
-        if ((!update.id && !update.name) || (typeof update.stock !== 'number' && typeof update.change !== 'number')) {
-             return NextResponse.json({ message: 'Bad Request: "id" or "name" is required, and either "stock" (absolute) or "change" (relative) must be provided.' }, { status: 400 });
+        // Validasi: Harus ada 'productId' atau 'name', dan 'amount' atau 'stock'
+        if ((!update.productId && !update.name) || (typeof update.stock !== 'number' && typeof update.amount !== 'number')) {
+             return NextResponse.json({ message: 'Bad Request: "productId" or "name" is required, and either "stock" (absolute) or "amount" (relative) must be provided.' }, { status: 400 });
         }
 
-        let productId: string | undefined = update.id;
+        let productId: string | undefined = update.productId;
         
         // Jika hanya nama yang diberikan, cari ID-nya
         if (update.name && !productId) {
@@ -121,8 +121,8 @@ export async function POST(req: NextRequest) {
         let stockChange = 0;
         let newStock = 0;
 
-        if (typeof update.change === 'number') {
-            stockChange = update.change;
+        if (typeof update.amount === 'number') {
+            stockChange = update.amount;
             newStock = productData.stock + stockChange;
         } else if (typeof update.stock === 'number') {
             stockChange = update.stock - productData.stock;
@@ -256,6 +256,3 @@ export async function DELETE(req: NextRequest) {
         return NextResponse.json({ message: `Internal Server Error: ${error.message}` }, { status: 500 });
     }
 }
-
-
-    
