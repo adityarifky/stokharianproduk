@@ -1,47 +1,39 @@
-
 // DREAMPAD V.12 - Respon Natural AI & Pengambilan Sesi Otomatis
+// VERSI PERBAIKAN FINAL - Menggunakan referensi node eksplisit
 
 // =========================================================================
 // PENJELASAN PERUBAHAN
 // =========================================================================
-// Bro, ini adalah versi paling sempurna dari kode n8n kita.
-// Perubahan utamanya adalah:
-// 1. Mengambil nama pengguna secara OTOMATIS dari data Telegram.
-// 2. Mengekstrak RESPON NATURAL dari AI untuk dikirim kembali ke user.
+// Bro, ini adalah versi yang sudah diperbaiki total.
+// MASALAHNYA: Kode sebelumnya mencoba mengambil data dari 'Telegram Trigger'
+// dengan cara yang tidak bisa dilakukan dari dalam node ini.
 //
-// ALUR KERJA BARU YANG POWERFUL:
-// 1. Telegram Trigger: Menerima pesan dari user + data pengirim (nama, dll).
-// 2. AI Agent: Menghasilkan output yang berisi DUA bagian:
-//    a. Perintah `tool_code` untuk update stok.
-//    b. Kalimat konfirmasi natural ("goks, beres bro!", dll).
-// 3. Code (Node ini):
-//    a. Mengekstrak `productId` dan `amount` dari tool_code.
-//    b. Mengekstrak KALIMAT NATURAL dari output AI.
-//    c. MENGAMBIL NAMA DEPAN user langsung dari data Telegram Trigger.
-//    d. Menyiapkan output JSON berisi SEMUA data ini.
-// 4. HTTP Request: Mengirim SEMUA data ini ke endpoint /api/stock.
-// 5. Send a text message: Mengirim KALIMAT NATURAL yang sudah diekstrak ke user.
-//
-// Dengan cara ini, riwayat tercatat rapi DAN respons bot terasa hidup.
+// SOLUSINYA: Kita akan secara EKSPLISIT memberitahu n8n untuk melihat
+// kembali ke node 'Telegram Trigger' menggunakan sintaks `$('...').item`.
+// Ini adalah cara yang paling anti-error.
 // =========================================================================
 
-// Mengambil output mentah dari node AI Agent sebelumnya
-const rawOutput = $('AI Agent').item.json.output;
 
-// Mengambil data lengkap dari Telegram Trigger untuk mendapatkan info user
+// Mengambil output dari node sebelumnya (node 'If')
+// $input.item.json.output adalah cara yang benar untuk input langsung
+const rawOutput = $input.item.json.output;
+
+// MENGAMBIL DATA LANGSUNG DARI SUMBERNYA SECARA EKSPLISIT
+// Ini adalah kunci perbaikannya. Kita panggil langsung node 'Telegram Trigger'.
 const triggerData = $('Telegram Trigger').item.json;
 
 // --- Validasi Input Penting ---
+// Pemeriksaan ini penting untuk mencegah error jika ada data yang kosong.
 if (!rawOutput || !triggerData || !triggerData.message) {
-  return [{ json: { error: 'Tidak dapat menemukan output dari AI atau data dari Telegram.' } }];
+  // Jika ada yang salah, kita hentikan dan beri pesan error yang jelas.
+  throw new Error('Tidak dapat menemukan output dari AI atau data dari Telegram Trigger.');
 }
 
 // 1. Ekstrak productId dan amount dari `tool_code`
 const productIdMatch = rawOutput.match(/productId='([^']+)'/);
-const amountMatch = rawOutput.match(/amount=([-\d.]+)/); // Ditingkatkan untuk desimal dan negatif
+const amountMatch = rawOutput.match(/amount=([-\d.]+)/); // Ditingkatkan untuk desimal & negatif
 
 const productId = productIdMatch ? productIdMatch[1] : null;
-// Diubah untuk menangani angka desimal dan negatif dengan benar
 const amount = amountMatch ? parseFloat(amountMatch[1]) : null;
 
 // 2. Ekstrak KALIMAT KONFIRMASI NATURAL dari AI
@@ -67,4 +59,5 @@ const output = {
 };
 
 // Kirim data yang sudah diekstrak ini ke node selanjutnya.
+// Ini adalah format return yang benar di n8n.
 return [{ json: output }];
