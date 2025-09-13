@@ -38,8 +38,8 @@ const productId = productIdMatch ? productIdMatch[1] : null;
 const amount = amountMatch ? parseFloat(amountMatch[1]) : null;
 
 // 2. Ekstrak KALIMAT KONFIRMASI NATURAL dari AI
-// Ini akan mengambil semua teks SETELAH baris 'print(updateStock...))'
-const naturalResponse = rawOutput.split('\n').slice(2).join('\n').trim();
+// PERBAIKAN DI SINI: Mengambil teks SETELAH tag penutup tool_code. Ini lebih andal.
+const naturalResponse = rawOutput.split('').pop().trim();
 
 // 3. Ambil informasi user (nama & posisi) secara OTOMATIS dari Telegram
 const userName = triggerData.message.from.first_name || "User Telegram";
