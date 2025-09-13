@@ -68,10 +68,12 @@ export async function GET(req: NextRequest) {
 
 interface StockUpdate {
     productId?: string;
+    id?: string; // Alias untuk productId dari n8n
     name?: string;
-    stock?: number; // Nilai absolut (opsional)
-    amount?: number; // Nilai perubahan (misal: +5 atau -2)
-    session?: { // Info sesi dari bot, WAJIB untuk pencatatan
+    stock?: number; // Nilai absolut
+    amount?: number; // Nilai perubahan (relatif)
+    change?: number; // Alias untuk amount dari n8n
+    session?: {
       name: string;
       position: string;
     }
@@ -90,56 +92,56 @@ export async function POST(req: NextRequest) {
     try {
         const update: StockUpdate = await req.json();
         
+        // --- UPGRADE: Logika input yang fleksibel ---
+        const productId = update.productId || update.id;
+        const amount = update.amount ?? update.change; // Gunakan amount, fallback ke change
+        const stock = update.stock;
+
         // Validasi: Harus ada 'productId' atau 'name', dan 'amount' atau 'stock'
-        if ((!update.productId && !update.name) || (typeof update.stock !== 'number' && typeof update.amount !== 'number')) {
+        if ((!productId && !update.name) || (typeof stock !== 'number' && typeof amount !== 'number')) {
              return NextResponse.json({ message: 'Bad Request: "productId" or "name" is required, and either "stock" (absolute) or "amount" (relative) must be provided.' }, { status: 400 });
         }
 
-        let productId: string | undefined = update.productId;
+        let finalProductId: string | undefined = productId;
         
-        // Jika hanya nama yang diberikan, cari ID-nya
-        if (update.name && !productId) {
+        if (update.name && !finalProductId) {
             const productSnapshot = await adminDb.collection("products").where("name", "==", update.name).limit(1).get();
             if (!productSnapshot.empty) {
-                productId = productSnapshot.docs[0].id;
+                finalProductId = productSnapshot.docs[0].id;
             } else {
                 return NextResponse.json({ message: `Product with name "${update.name}" not found.` }, { status: 404 });
             }
         }
 
-        if (!productId) {
+        if (!finalProductId) {
             return NextResponse.json({ message: 'Bad Request: Product ID could not be determined.' }, { status: 400 });
         }
 
-        const productRef = adminDb.collection("products").doc(productId);
+        const productRef = adminDb.collection("products").doc(finalProductId);
         const productDoc = await productRef.get();
         if (!productDoc.exists) {
-            return NextResponse.json({ message: `Product with ID "${productId}" not found.` }, { status: 404 });
+            return NextResponse.json({ message: `Product with ID "${finalProductId}" not found.` }, { status: 404 });
         }
         const productData = productDoc.data() as Product;
 
         let stockChange = 0;
         let newStock = 0;
 
-        if (typeof update.amount === 'number') {
-            stockChange = update.amount;
+        if (typeof amount === 'number') {
+            stockChange = amount;
             newStock = productData.stock + stockChange;
-        } else if (typeof update.stock === 'number') {
-            stockChange = update.stock - productData.stock;
-            newStock = update.stock;
+        } else if (typeof stock === 'number') {
+            stockChange = stock - productData.stock;
+            newStock = stock;
         }
 
-        // Mulai batch write untuk operasi atomik
         const batch = adminDb.batch();
 
-        // 1. Update stok produk
         batch.update(productRef, { stock: newStock });
 
-        // 2. Buat catatan riwayat berdasarkan jenis perubahan
-        // Gunakan info sesi dari body jika ada, jika tidak, gunakan default
         const sessionInfo = update.session || { name: "Bot Telegram", position: "Sistem" }; 
 
-        if (stockChange > 0) { // Penambahan Stok
+        if (stockChange > 0) {
             const historyRef = adminDb.collection("stock_history").doc();
             batch.set(historyRef, {
                 timestamp: FieldValue.serverTimestamp(),
@@ -152,7 +154,7 @@ export async function POST(req: NextRequest) {
                 quantityAdded: stockChange,
                 stockAfter: newStock,
             });
-        } else if (stockChange < 0) { // Pengurangan Stok (Penjualan)
+        } else if (stockChange < 0) {
             const historyRef = adminDb.collection("sales_history").doc();
             const saleItem: SaleHistoryItem = {
                 productId: productData.id,
@@ -168,10 +170,9 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        // Commit semua operasi sekaligus
         await batch.commit();
 
-        return NextResponse.json({ message: `Stock for product ${productId} updated successfully and history recorded.` }, { status: 200 });
+        return NextResponse.json({ message: `Stock for product ${finalProductId} updated successfully and history recorded.` }, { status: 200 });
 
     } catch (error: any) {
         console.error("Error in POST /api/stock:", error);
@@ -256,3 +257,5 @@ export async function DELETE(req: NextRequest) {
         return NextResponse.json({ message: `Internal Server Error: ${error.message}` }, { status: 500 });
     }
 }
+
+    
