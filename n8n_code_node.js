@@ -1,41 +1,42 @@
-// DREAMPAD V.10 - Arsitektur Terpusat (Disarankan)
+
+// DREAMPAD V.11 - Arsitektur Terpusat dengan Pengambilan Sesi Otomatis
 
 // =========================================================================
-// PENJELASAN ARSITEKTUR BARU
+// PENJELASAN PERUBAHAN
 // =========================================================================
-// Bro, workflow ini sekarang jadi super simpel. Semua logika "otak"-nya
-// (mendeteksi maksud, bertanya nama, memanggil tool, menjawab) sudah 
-// dipindahkan ke dalam kode aplikasi Next.js kita di file:
-// -> src/ai/flows/chat-flow.ts
-// -> src/app/api/chat/route.ts
+// Bro, ini adalah kode n8n yang sudah disempurnakan.
+// Perubahan utamanya adalah sekarang kita tidak perlu lagi bertanya
+// nama dan posisi ke pengguna.
 //
-// Workflow N8N ini sekarang hanya bertugas sebagai "KURIR" atau "JEMBATAN"
-// antara Telegram dan API aplikasi kita.
+// ALUR KERJA BARU:
+// 1. Telegram Trigger: Menerima pesan dari user, LENGKAP dengan data pengirim (nama, dll).
+// 2. Code (Node ini):
+//    a. Mengambil teks pesan dari user.
+//    b. MENGAMBIL NAMA DEPAN user langsung dari data Telegram Trigger.
+//    c. Menentukan posisi default (misal: "Staf").
+//    d. Menyiapkan output JSON yang berisi pesan user DAN informasi sesi (nama & posisi).
+// 3. HTTP Request: Mengirim SEMUA data ini ke endpoint /api/chat kita.
 //
-// ALUR KERJA:
-// 1. Telegram Trigger: Menerima pesan dari user.
-// 2. Code (Node ini): Mengambil teks pesan dari user.
-// 3. HTTP Request: Mengirim pesan user ke endpoint /api/chat di aplikasi kita.
-// 4. Send a text message: Mengambil jawaban FINAL dari API dan mengirimnya ke user.
-//
-// Ini adalah praktik terbaik karena membuat semuanya terpusat, lebih mudah 
-// di-debug, dan jauh lebih powerful.
+// Dengan cara ini, website kita akan langsung tahu siapa yang mengirim pesan
+// dan bisa mencatat riwayat dengan akurat, tanpa perlu interaksi tambahan.
+// Jauh lebih cepat dan efisien.
 // =========================================================================
 
 
-// Mengambil data dari Telegram Trigger.
+// Mengambil data lengkap dari Telegram Trigger.
 const triggerData = $('Telegram Trigger').item.json;
 
 // Validasi input awal.
 if (!triggerData || !triggerData.message || !triggerData.message.text) {
-  // Jika tidak ada pesan, kita hentikan di sini.
-  // Sebaiknya, tambahkan node "NoOp" (Do Nothing) setelah ini untuk error handling.
   return [{ json: { error: 'Tidak dapat menemukan teks pesan dari Telegram Trigger.' } }];
 }
 
-// Hanya mengambil history chat terakhir dari user.
-// Aplikasi kita sekarang yang akan mengelola history lengkap.
+// Mengambil teks pesan terakhir dari user.
 const latestUserMessage = triggerData.message.text;
+
+// MENGAMBIL INFORMASI PENGGUNA SECARA OTOMATIS
+const userName = triggerData.message.from.first_name || "User Telegram";
+const userPosition = "Staf"; // Posisi default, bisa diubah jika perlu
 
 // Siapkan output untuk dikirim ke node HTTP Request berikutnya.
 // Strukturnya harus cocok dengan yang diharapkan oleh endpoint /api/chat.
@@ -45,7 +46,12 @@ const output = {
       role: "user",
       content: [{ text: latestUserMessage }]
     }
-  ]
+  ],
+  // Kita selipkan informasi sesi di sini
+  session: {
+    name: userName,
+    position: userPosition
+  }
 };
 
 // Kirim data ini ke node selanjutnya.
