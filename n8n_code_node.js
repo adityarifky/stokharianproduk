@@ -39,7 +39,7 @@ const amount = amountMatch ? parseFloat(amountMatch[1]) : null;
 
 // 2. Ekstrak KALIMAT KONFIRMASI NATURAL dari AI
 // PERBAIKAN DI SINI: Mengambil teks SETELAH tag penutup tool_code. Ini lebih andal.
-const naturalResponse = rawOutput.split('').pop().trim();
+const naturalResponse = rawOutput.split('))').pop().trim();
 
 // 3. Ambil informasi user (nama & posisi) secara OTOMATIS dari Telegram
 const userName = triggerData.message.from.first_name || "User Telegram";
