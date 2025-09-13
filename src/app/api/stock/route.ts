@@ -156,8 +156,8 @@ export async function POST(req: NextRequest) {
             });
         } else if (stockChange < 0) {
             const historyRef = adminDb.collection("sales_history").doc();
-            const saleItem: SaleHistoryItem = {
-                productId: finalProductId, // <-- PERBAIKAN DI SINI
+             const saleItem: SaleHistoryItem = {
+                productId: finalProductId,
                 productName: productData.name,
                 quantity: Math.abs(stockChange),
                 image: productData.image
